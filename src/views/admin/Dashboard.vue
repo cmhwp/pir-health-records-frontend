@@ -38,20 +38,32 @@
           <template #icon><cloud-outlined /></template>
           <span>数据备份</span>
         </a-menu-item>
-        <a-menu-item key="profile" @click="goToProfile">
-          <template #icon><setting-outlined /></template>
-          <span>个人设置</span>
-        </a-menu-item>
-        <a-menu-item key="logout" @click="handleLogout">
-          <template #icon><logout-outlined /></template>
-          <span>退出登录</span>
-        </a-menu-item>
       </a-menu>
     </a-layout-sider>
     <a-layout>
       <a-layout-header style="background: #fff; padding: 0 16px; display: flex; align-items: center; justify-content: space-between">
         <span style="font-size: 18px; font-weight: bold">系统管理员控制台</span>
-        <span>欢迎，{{ userName }}</span>
+        <a-popover placement="bottomRight" trigger="click">
+          <template #content>
+            <a-menu style="border: none; width: 160px">
+              <a-menu-item key="user-profile" @click="goToProfile">
+                <template #icon><setting-outlined /></template>
+                个人设置
+              </a-menu-item>
+              <a-divider style="margin: 4px 0" />
+              <a-menu-item key="user-logout" @click="handleLogout">
+                <template #icon><logout-outlined /></template>
+                退出登录
+              </a-menu-item>
+            </a-menu>
+          </template>
+          <div style="display: flex; align-items: center; cursor: pointer">
+            <a-avatar :size="32" style="background-color: #f56a00">
+              {{ userName.charAt(0).toUpperCase() }}
+            </a-avatar>
+            <span style="margin-left: 8px">{{ userName }}</span>
+          </div>
+        </a-popover>
       </a-layout-header>
       <a-layout-content style="margin: 16px">
         <a-breadcrumb style="margin: 16px 0">

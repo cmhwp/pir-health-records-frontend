@@ -20,7 +20,7 @@ export const getNotifications = (page = 1, limit = 10): Promise<ApiResponse<{ no
  * 获取未读通知数量
  */
 export const getNotificationCount = (): Promise<ApiResponse<NotificationCount>> => {
-  return request.get('/notifications/count');
+  return request.get('/notifications/unread-count');
 };
 
 /**

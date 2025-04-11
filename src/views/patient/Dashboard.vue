@@ -49,14 +49,6 @@
           <a-menu-item key="pir-settings">隐私设置</a-menu-item>
           <a-menu-item key="pir-history">查询历史</a-menu-item>
         </a-sub-menu>
-        <a-menu-item key="profile">
-          <user-outlined />
-          <span>个人设置</span>
-        </a-menu-item>
-        <a-menu-item key="logout" @click="handleLogout">
-          <logout-outlined />
-          <span>退出登录</span>
-        </a-menu-item>
       </a-menu>
     </a-layout-sider>
     
@@ -85,7 +77,28 @@
               </template>
             </a-button>
           </a-badge>
-          <span style="margin-left: 16px">欢迎，{{ userName }}</span>
+          
+          <a-popover placement="bottomRight" trigger="click">
+            <template #content>
+              <a-menu style="border: none; width: 160px">
+                <a-menu-item key="user-profile" @click="handleMenuSelect({ key: 'profile' })">
+                  <template #icon><user-outlined /></template>
+                  个人设置
+                </a-menu-item>
+                <a-divider style="margin: 4px 0" />
+                <a-menu-item key="user-logout" @click="handleLogout">
+                  <template #icon><logout-outlined /></template>
+                  退出登录
+                </a-menu-item>
+              </a-menu>
+            </template>
+            <div style="margin-left: 16px; display: flex; align-items: center; cursor: pointer">
+              <a-avatar :size="32" style="background-color: #1890ff">
+                {{ userName.charAt(0).toUpperCase() }}
+              </a-avatar>
+              <span style="margin-left: 8px">{{ userName }}</span>
+            </div>
+          </a-popover>
         </div>
       </a-layout-header>
       
@@ -292,7 +305,7 @@ const handleLogout = async () => {
     localStorage.removeItem('userRole');
     localStorage.removeItem('userName');
     message.success('已成功退出登录');
-    router.push('/login');
+    router.push('/au/login');
   } catch (error) {
     console.error('退出登录失败:', error);
     message.error('退出登录失败，请重试');
