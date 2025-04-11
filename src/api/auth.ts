@@ -48,4 +48,22 @@ export const updateUser = (data: Partial<User>): Promise<ApiResponse<User>> => {
  */
 export const changePassword = (data: ChangePasswordRequest): Promise<ApiResponse> => {
   return request.post('/auth/change-password', data);
+};
+
+/**
+ * 上传头像
+ */
+export const uploadAvatar = (formData: FormData): Promise<ApiResponse<{avatar: string}>> => {
+  return request.post('/auth/avatar', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+};
+
+/**
+ * 获取头像URL
+ */
+export const getAvatarUrl = (filename: string): string => {
+  return `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/avatar/${filename}`;
 }; 

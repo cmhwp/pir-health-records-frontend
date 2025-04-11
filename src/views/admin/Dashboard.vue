@@ -5,7 +5,7 @@
         <h3 v-if="!collapsed">PIR健康记录</h3>
         <h3 v-else>PIR</h3>
       </div>
-      <a-menu v-model:selectedKeys="selectedKeys" theme="dark" mode="inline">
+      <a-menu v-model:selectedKeys="selectedKeys" theme="dark" mode="inline" @select="handleMenuSelect">
         <a-menu-item key="dashboard">
           <template #icon><dashboard-outlined /></template>
           <span>控制台</span>
@@ -149,7 +149,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { message } from 'ant-design-vue';
 import { 
@@ -171,6 +171,11 @@ const collapsed = ref<boolean>(false);
 const selectedKeys = ref<string[]>(['dashboard']);
 const userName = ref<string>(localStorage.getItem('userName') || '系统管理员');
 
+// 处理菜单选择
+const handleMenuSelect = ({ key }: { key: string }) => {
+  localStorage.setItem('adminSelectedMenu', key);
+};
+
 const goToProfile = () => {
   router.push('/profile');
 };
@@ -178,16 +183,27 @@ const goToProfile = () => {
 const handleLogout = async () => {
   try {
     await logout();
+    message.success('退出登录成功');
+  } catch (error) {
+    console.error('退出登录失败:', error);
+    message.error('退出登录失败，但已清除本地登录状态');
+  } finally {
+    // 无论请求成功或失败，都清除本地存储并跳转
     localStorage.removeItem('token');
     localStorage.removeItem('userRole');
     localStorage.removeItem('userName');
-    message.success('退出登录成功');
+    localStorage.removeItem('adminSelectedMenu');
     router.push('/auth/login');
-  } catch (error) {
-    console.error('退出登录失败:', error);
-    message.error('退出登录失败');
   }
 };
+
+// 组件挂载时，从localStorage读取上次选中的菜单项
+onMounted(() => {
+  const savedMenu = localStorage.getItem('adminSelectedMenu');
+  if (savedMenu) {
+    selectedKeys.value = [savedMenu];
+  }
+});
 </script>
 
 <style scoped>

@@ -5,7 +5,7 @@
         <h3 v-if="!collapsed">PIR健康记录</h3>
         <h3 v-else>PIR</h3>
       </div>
-      <a-menu v-model:selectedKeys="selectedKeys" theme="dark" mode="inline">
+      <a-menu v-model:selectedKeys="selectedKeys" theme="dark" mode="inline" @select="handleMenuSelect">
         <a-menu-item key="dashboard">
           <template #icon><dashboard-outlined /></template>
           <span>工作台</span>
@@ -36,7 +36,7 @@
           <a-menu-item key="visualization-1">图表分析</a-menu-item>
           <a-menu-item key="visualization-2">地理分布</a-menu-item>
         </a-sub-menu>
-        <a-menu-item key="profile" @click="goToProfile">
+        <a-menu-item key="profile">
           <template #icon><setting-outlined /></template>
           <span>个人设置</span>
         </a-menu-item>
@@ -48,82 +48,16 @@
     </a-layout-sider>
     <a-layout>
       <a-layout-header style="background: #fff; padding: 0 16px; display: flex; align-items: center; justify-content: space-between">
-        <span style="font-size: 18px; font-weight: bold">研究人员工作台</span>
+        <span style="font-size: 18px; font-weight: bold">{{ currentPageTitle }}</span>
         <span>欢迎，{{ userName }}</span>
       </a-layout-header>
       <a-layout-content style="margin: 16px">
         <a-breadcrumb style="margin: 16px 0">
           <a-breadcrumb-item>首页</a-breadcrumb-item>
-          <a-breadcrumb-item>工作台</a-breadcrumb-item>
+          <a-breadcrumb-item>{{ currentPageTitle }}</a-breadcrumb-item>
         </a-breadcrumb>
         <div style="padding: 24px; background: #fff; min-height: 360px">
-          <h1>研究人员工作台</h1>
-          <a-row :gutter="16">
-            <a-col :span="6">
-              <a-statistic title="进行中项目" :value="0" style="margin-bottom: 16px">
-                <template #suffix>
-                  <project-outlined />
-                </template>
-              </a-statistic>
-            </a-col>
-            <a-col :span="6">
-              <a-statistic title="可用数据集" :value="0" style="margin-bottom: 16px">
-                <template #suffix>
-                  <database-outlined />
-                </template>
-              </a-statistic>
-            </a-col>
-            <a-col :span="6">
-              <a-statistic title="已发布报告" :value="0" style="margin-bottom: 16px">
-                <template #suffix>
-                  <file-text-outlined />
-                </template>
-              </a-statistic>
-            </a-col>
-            <a-col :span="6">
-              <a-statistic title="团队成员" :value="0" style="margin-bottom: 16px">
-                <template #suffix>
-                  <team-outlined />
-                </template>
-              </a-statistic>
-            </a-col>
-          </a-row>
-          
-          <a-divider />
-          
-          <a-row :gutter="16">
-            <a-col :span="8">
-              <a-card title="研究项目" :bordered="false">
-                <template #extra><a href="#">更多</a></template>
-                <p>管理您的研究项目</p>
-                <a-button type="primary">查看项目列表</a-button>
-              </a-card>
-            </a-col>
-            <a-col :span="8">
-              <a-card title="数据分析" :bordered="false">
-                <template #extra><a href="#">更多</a></template>
-                <p>访问匿名化医疗数据进行分析</p>
-                <a-button type="primary">数据分析工具</a-button>
-              </a-card>
-            </a-col>
-            <a-col :span="8">
-              <a-card title="研究报告" :bordered="false">
-                <template #extra><a href="#">更多</a></template>
-                <p>管理研究报告和发现</p>
-                <a-button type="primary">管理报告</a-button>
-              </a-card>
-            </a-col>
-          </a-row>
-          
-          <a-divider />
-          
-          <a-row :gutter="16">
-            <a-col :span="24">
-              <a-card title="最近项目进展" :bordered="false">
-                <a-empty description="暂无项目进展" />
-              </a-card>
-            </a-col>
-          </a-row>
+          <component :is="currentView" />
         </div>
       </a-layout-content>
       <a-layout-footer style="text-align: center">
@@ -134,7 +68,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue';
+import { ref, computed, markRaw, defineAsyncComponent, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { message } from 'ant-design-vue';
 import { 
@@ -150,28 +84,128 @@ import {
 } from '@ant-design/icons-vue';
 import { logout } from '@/api/auth';
 
+// 默认页面组件 - 工作台
+const DashboardContent = defineAsyncComponent(() => 
+  import('@/components/researcher/DashboardContent.vue')
+);
+
+// 懒加载其他页面组件
+const ProjectsContent = defineAsyncComponent(() => 
+  import('@/components/researcher/ProjectsContent.vue')
+);
+const AnalyticsContent = defineAsyncComponent(() => 
+  import('@/components/researcher/AnalyticsContent.vue')
+);
+const ReportsContent = defineAsyncComponent(() => 
+  import('@/components/researcher/ReportsContent.vue')
+);
+const TeamsContent = defineAsyncComponent(() => 
+  import('@/components/researcher/TeamsContent.vue')
+);
+const VisualizationChartContent = defineAsyncComponent(() => 
+  import('@/components/researcher/VisualizationChartContent.vue')
+);
+const VisualizationGeoContent = defineAsyncComponent(() => 
+  import('@/components/researcher/VisualizationGeoContent.vue')
+);
+const ProfileContent = defineAsyncComponent(() => 
+  import('@/views/auth/Profile.vue')
+);
+
+
 const router = useRouter();
 const collapsed = ref<boolean>(false);
 const selectedKeys = ref<string[]>(['dashboard']);
 const userName = ref<string>(localStorage.getItem('userName') || '研究人员用户');
 
+// 当前显示的组件
+const currentView = ref(markRaw(DashboardContent));
+
+// 页面标题映射
+const pageTitles = {
+  dashboard: '工作台',
+  projects: '研究项目',
+  analytics: '数据分析',
+  reports: '研究报告',
+  teams: '合作团队',
+  'visualization-1': '图表分析',
+  'visualization-2': '地理分布',
+  profile: '个人设置'
+};
+
+// 计算当前页面标题
+const currentPageTitle = computed(() => {
+  return pageTitles[selectedKeys.value[0] as keyof typeof pageTitles] || '工作台';
+});
+
+// 处理菜单选择
+const handleMenuSelect = ({ key }: { key: string }) => {
+  // 保存选中的菜单项到localStorage
+  localStorage.setItem('selectedMenu', key);
+  
+  // 根据选中的菜单项切换显示的组件
+  switch (key) {
+    case 'dashboard':
+      currentView.value = markRaw(DashboardContent);
+      break;
+    case 'projects':
+      currentView.value = markRaw(ProjectsContent);
+      break;
+    case 'analytics':
+      currentView.value = markRaw(AnalyticsContent);
+      break;
+    case 'reports':
+      currentView.value = markRaw(ReportsContent);
+      break;
+    case 'teams':
+      currentView.value = markRaw(TeamsContent);
+      break;
+    case 'visualization-1':
+      currentView.value = markRaw(VisualizationChartContent);
+      break;
+    case 'visualization-2':
+      currentView.value = markRaw(VisualizationGeoContent);
+      break;
+    case 'profile':
+      currentView.value = markRaw(ProfileContent);
+      break;
+    case 'logout':
+      handleLogout();
+      break;
+    // profile 和 logout 由单独的方法处理
+  }
+};
+
 const goToProfile = () => {
-  router.push('/profile');
+  router.push('/researcher/profile');
 };
 
 const handleLogout = async () => {
   try {
     await logout();
+    message.success('退出登录成功');
+  } catch (error) {
+    console.error('退出登录失败:', error);
+    message.error('退出登录失败，但已清除本地登录状态');
+  } finally {
+    // 无论请求成功或失败，都清除本地存储并跳转
     localStorage.removeItem('token');
     localStorage.removeItem('userRole');
     localStorage.removeItem('userName');
-    message.success('退出登录成功');
+    localStorage.removeItem('selectedMenu');
     router.push('/auth/login');
-  } catch (error) {
-    console.error('退出登录失败:', error);
-    message.error('退出登录失败');
   }
 };
+
+// 组件挂载时，从localStorage读取上次选中的菜单项
+onMounted(() => {
+  const savedMenu = localStorage.getItem('selectedMenu');
+  if (savedMenu) {
+    selectedKeys.value = [savedMenu];
+    // 根据保存的菜单项设置当前视图
+    handleMenuSelect({ key: savedMenu });
+  }
+});
 </script>
 
 <style scoped>

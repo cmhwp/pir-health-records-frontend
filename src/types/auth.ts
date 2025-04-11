@@ -9,6 +9,7 @@ export interface User {
   id: number;
   username: string;
   email: string;
+  avatar?: string;
   full_name?: string;
   phone?: string;
   role: Role;
