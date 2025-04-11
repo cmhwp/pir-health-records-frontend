@@ -42,76 +42,62 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent, reactive, ref, onMounted } from 'vue';
-import type { PropType } from 'vue';
+<script lang="ts" setup>
+import { reactive, ref, onMounted } from 'vue';
 import { message } from 'ant-design-vue';
 import axios from 'axios';
 import type { PatientInfo } from '@/types/auth';
 
-export default defineComponent({
-  name: 'PatientInfoForm',
-  props: {
-    userId: {
-      type: Number as PropType<number>,
-      required: true
+const props = defineProps<{
+  userId: number
+}>();
+
+const loading = ref(false);
+
+const patientForm = reactive<Partial<PatientInfo>>({
+  user_id: props.userId,
+  gender: '',
+  address: '',
+  emergency_contact: '',
+  emergency_phone: '',
+  medical_history: '',
+  allergies: ''
+});
+
+// 获取患者信息
+const fetchPatientInfo = async () => {
+  loading.value = true;
+  try {
+    const response = await axios.get(`/api/patient/info/${props.userId}`);
+    if (response.data.success) {
+      Object.assign(patientForm, response.data.data);
     }
-  },
-  setup(props) {
-    const loading = ref(false);
-    
-    const patientForm = reactive<Partial<PatientInfo>>({
-      user_id: props.userId,
-      gender: '',
-      address: '',
-      emergency_contact: '',
-      emergency_phone: '',
-      medical_history: '',
-      allergies: ''
-    });
-    
-    // 获取患者信息
-    const fetchPatientInfo = async () => {
-      loading.value = true;
-      try {
-        const response = await axios.get(`/api/patient/info/${props.userId}`);
-        if (response.data.success) {
-          Object.assign(patientForm, response.data.data);
-        }
-      } catch (error) {
-        console.error('获取患者信息失败', error);
-      } finally {
-        loading.value = false;
-      }
-    };
-    
-    // 更新患者信息
-    const handleUpdate = async () => {
-      loading.value = true;
-      try {
-        const response = await axios.put('/api/patient/info', patientForm);
-        if (response.data.success) {
-          message.success('患者信息更新成功');
-        } else {
-          message.error(response.data.message || '更新失败');
-        }
-      } catch (error: any) {
-        message.error(error.message || '更新请求失败');
-      } finally {
-        loading.value = false;
-      }
-    };
-    
-    onMounted(() => {
-      fetchPatientInfo();
-    });
-    
-    return {
-      patientForm,
-      loading,
-      handleUpdate
-    };
+  } catch (error) {
+    console.error('获取患者信息失败', error);
+  } finally {
+    loading.value = false;
   }
+};
+
+// 更新患者信息
+const handleUpdate = async () => {
+  loading.value = true;
+  try {
+    const response = await axios.put('/api/patient/info', patientForm);
+    if (response.data.success) {
+      message.success('患者信息更新成功');
+    } else {
+      message.error(response.data.message || '更新失败');
+    }
+  } catch (error: any) {
+    message.error(error.message || '更新请求失败');
+  } finally {
+    loading.value = false;
+  }
+};
+
+onMounted(() => {
+  fetchPatientInfo();
 });
 </script>
 

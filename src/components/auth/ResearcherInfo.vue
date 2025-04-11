@@ -42,77 +42,63 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent, reactive, ref, onMounted } from 'vue';
-import type { PropType } from 'vue';
+<script lang="ts" setup>
+import { reactive, ref, onMounted } from 'vue';
 import { message } from 'ant-design-vue';
 import axios from 'axios';
 import type { ResearcherInfo } from '@/types/auth';
 
-export default defineComponent({
-  name: 'ResearcherInfoForm',
-  props: {
-    userId: {
-      type: Number as PropType<number>,
-      required: true
+const props = defineProps<{
+  userId: number
+}>();
+
+const loading = ref(false);
+
+const researcherForm = reactive<Partial<ResearcherInfo>>({
+  user_id: props.userId,
+  institution: '',
+  department: '',
+  research_area: '',
+  education: '',
+  publications: '',
+  projects: '',
+  bio: ''
+});
+
+// 获取研究人员信息
+const fetchResearcherInfo = async () => {
+  loading.value = true;
+  try {
+    const response = await axios.get(`/api/researcher/info/${props.userId}`);
+    if (response.data.success) {
+      Object.assign(researcherForm, response.data.data);
     }
-  },
-  setup(props) {
-    const loading = ref(false);
-    
-    const researcherForm = reactive<Partial<ResearcherInfo>>({
-      user_id: props.userId,
-      institution: '',
-      department: '',
-      research_area: '',
-      education: '',
-      publications: '',
-      projects: '',
-      bio: ''
-    });
-    
-    // 获取研究人员信息
-    const fetchResearcherInfo = async () => {
-      loading.value = true;
-      try {
-        const response = await axios.get(`/api/researcher/info/${props.userId}`);
-        if (response.data.success) {
-          Object.assign(researcherForm, response.data.data);
-        }
-      } catch (error) {
-        console.error('获取研究人员信息失败', error);
-      } finally {
-        loading.value = false;
-      }
-    };
-    
-    // 更新研究人员信息
-    const handleUpdate = async () => {
-      loading.value = true;
-      try {
-        const response = await axios.put('/api/researcher/info', researcherForm);
-        if (response.data.success) {
-          message.success('研究人员信息更新成功');
-        } else {
-          message.error(response.data.message || '更新失败');
-        }
-      } catch (error: any) {
-        message.error(error.message || '更新请求失败');
-      } finally {
-        loading.value = false;
-      }
-    };
-    
-    onMounted(() => {
-      fetchResearcherInfo();
-    });
-    
-    return {
-      researcherForm,
-      loading,
-      handleUpdate
-    };
+  } catch (error) {
+    console.error('获取研究人员信息失败', error);
+  } finally {
+    loading.value = false;
   }
+};
+
+// 更新研究人员信息
+const handleUpdate = async () => {
+  loading.value = true;
+  try {
+    const response = await axios.put('/api/researcher/info', researcherForm);
+    if (response.data.success) {
+      message.success('研究人员信息更新成功');
+    } else {
+      message.error(response.data.message || '更新失败');
+    }
+  } catch (error: any) {
+    message.error(error.message || '更新请求失败');
+  } finally {
+    loading.value = false;
+  }
+};
+
+onMounted(() => {
+  fetchResearcherInfo();
 });
 </script>
 
