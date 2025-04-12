@@ -1,255 +1,307 @@
 <template>
-  <div>
-    <a-page-header
-      title="查询历史"
-      sub-title="查看您的隐私查询历史记录"
-    />
-    
-    <a-card style="margin-top: 16px">
-      <a-form layout="inline" style="margin-bottom: 16px">
-        <a-form-item label="时间范围">
-          <a-range-picker
-            v-model:value="dateRange"
-            style="width: 260px"
-            @change="handleDateRangeChange"
-          />
-        </a-form-item>
-        <a-form-item label="查询类型">
-          <a-select
-            v-model:value="queryType"
-            style="width: 180px"
-            placeholder="选择查询类型"
-            @change="handleFilterChange"
-          >
-            <a-select-option value="">全部</a-select-option>
-            <a-select-option value="disease">疾病查询</a-select-option>
-            <a-select-option value="medication">药物查询</a-select-option>
-            <a-select-option value="symptom">症状查询</a-select-option>
-            <a-select-option value="treatment">治疗方案</a-select-option>
-            <a-select-option value="other">其他查询</a-select-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item>
-          <a-button type="primary" @click="handleFilterChange">
-            筛选
-          </a-button>
-          <a-button style="margin-left: 8px" @click="resetFilters">
-            重置
-          </a-button>
-        </a-form-item>
-      </a-form>
-      
-      <a-alert
-        v-if="!queries.length && !loading"
-        message="暂无查询历史记录"
-        description="您还没有进行过隐私查询，或者符合条件的查询已被清除。"
-        type="info"
-        show-icon
-        style="margin-bottom: 16px"
-      />
-      
-      <a-spin :spinning="loading">
-        <a-list
-          v-if="queries.length"
-          item-layout="horizontal"
-          :data-source="queries"
-          :pagination="{
-            pageSize: 10,
-            total: total,
-            current: current,
-            onChange: handlePageChange,
-            showTotal: total => `共 ${total} 条查询`
-          }"
-        >
-          <template #renderItem="{ item }">
-            <a-list-item>
-              <a-list-item-meta :description="getQueryDescription(item)">
-                <template #title>
-                  <div style="display: flex; justify-content: space-between; align-items: center">
-                    <span>{{ item.query_text }}</span>
-                    <a-tag :color="getQueryTypeColor(item.query_type)">
-                      {{ getQueryTypeName(item.query_type) }}
-                    </a-tag>
-                  </div>
-                </template>
-                <template #avatar>
-                  <a-avatar :style="{ backgroundColor: getQueryTypeColor(item.query_type) }">
-                    {{ getQueryTypeIcon(item.query_type) }}
-                  </a-avatar>
-                </template>
-              </a-list-item-meta>
-              <template #actions>
-                <a @click="viewQueryDetails(item)">详情</a>
-                <a @click="repeatQuery(item)">重新查询</a>
-                <a-popconfirm
-                  title="确定要删除这条查询记录吗?"
-                  ok-text="确定"
-                  cancel-text="取消"
-                  @confirm="deleteQuery(item)"
-                >
-                  <a>删除</a>
-                </a-popconfirm>
-              </template>
-              <div class="query-time">{{ formatDate(item.query_time) }}</div>
-            </a-list-item>
+  <div class="pir-history-container">
+    <a-row :gutter="16">
+      <a-col :span="24">
+        <a-card title="查询历史" :loading="loading">
+          <template #extra>
+            <a-radio-group v-model:value="filterType" button-style="solid" @change="handleFilterChange">
+              <a-radio-button value="all">全部查询</a-radio-button>
+              <a-radio-button value="pir">仅PIR查询</a-radio-button>
+            </a-radio-group>
           </template>
-        </a-list>
-      </a-spin>
-      
-      <a-divider style="margin-top: 24px" />
-      
-      <div style="display: flex; justify-content: space-between; align-items: center">
-        <a-button @click="exportQueryHistory" :loading="exporting">
-          <template #icon><download-outlined /></template>
-          导出查询历史
-        </a-button>
-        <a-popconfirm
-          title="确定要清除所有查询历史吗? 此操作不可恢复!"
-          ok-text="确定"
-          cancel-text="取消"
-          @confirm="clearAllHistory"
-        >
-          <a-button danger>
-            <template #icon><delete-outlined /></template>
-            清除所有查询历史
-          </a-button>
-        </a-popconfirm>
-      </div>
-    </a-card>
-    
-    <!-- 查询详情模态框 -->
-    <a-modal
-      v-model:visible="detailModalVisible"
-      title="查询详情"
-      width="800px"
-      :footer="null"
-    >
-      <template v-if="currentQuery">
-        <a-descriptions bordered>
-          <a-descriptions-item label="查询时间" span="3">
-            {{ formatDate(currentQuery.query_time, true) }}
-          </a-descriptions-item>
-          <a-descriptions-item label="查询内容" span="3">
-            {{ currentQuery.query_text }}
-          </a-descriptions-item>
-          <a-descriptions-item label="查询类型">
-            {{ getQueryTypeName(currentQuery.query_type) }}
-          </a-descriptions-item>
-          <a-descriptions-item label="查询状态">
-            <a-tag :color="getStatusColor(currentQuery.status)">
-              {{ getStatusText(currentQuery.status) }}
-            </a-tag>
-          </a-descriptions-item>
-          <a-descriptions-item label="匿名查询">
-            {{ currentQuery.is_anonymous ? '是' : '否' }}
-          </a-descriptions-item>
-          <a-descriptions-item label="PIR服务器" span="3">
-            {{ currentQuery.pir_server }}
-          </a-descriptions-item>
-          <a-descriptions-item label="安全级别">
-            {{ getSecurityLevelText(currentQuery.security_level) }}
-          </a-descriptions-item>
-          <a-descriptions-item label="查询耗时">
-            {{ currentQuery.query_duration }} 毫秒
-          </a-descriptions-item>
-          <a-descriptions-item label="数据量">
-            {{ formatDataSize(currentQuery.data_size) }}
-          </a-descriptions-item>
-        </a-descriptions>
-        
-        <a-divider orientation="left">查询参数</a-divider>
-        
-        <div v-if="currentQuery.parameters && currentQuery.parameters.length">
-          <a-table
-            :dataSource="currentQuery.parameters"
-            :columns="paramColumns"
-            :pagination="false"
-            size="small"
-          />
-        </div>
-        <a-empty v-else description="无查询参数" />
-        
-        <a-divider orientation="left">查询结果摘要</a-divider>
-        
-        <div v-if="currentQuery.result_summary">
-          <a-alert
-            :message="currentQuery.result_summary"
-            type="info"
-            show-icon
-            style="margin-bottom: 16px"
-          />
           
-          <a-collapse v-if="currentQuery.result_details">
-            <a-collapse-panel key="1" header="查看完整结果">
-              <pre style="max-height: 300px; overflow: auto; background: #f5f5f5; padding: 8px; border-radius: 4px">{{ currentQuery.result_details }}</pre>
-            </a-collapse-panel>
-          </a-collapse>
-        </div>
-        <a-empty v-else description="无可用结果" />
-      </template>
-    </a-modal>
+          <a-table
+            :dataSource="queryHistory"
+            :columns="columns"
+            :loading="loading"
+            :pagination="pagination"
+            @change="handleTableChange"
+            rowKey="_id"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'query_type'">
+                <a-tag :color="getQueryTypeColor(record.query_type)">
+                  {{ getQueryTypeName(record.query_type) }}
+                </a-tag>
+              </template>
+              
+              <template v-if="column.key === 'is_anonymous'">
+                <a-tag :color="record.is_anonymous ? '#108ee9' : '#d9d9d9'">
+                  {{ record.is_anonymous ? 'PIR保护' : '标准查询' }}
+                </a-tag>
+              </template>
+              
+              <template v-if="column.key === 'query_params'">
+                <a-popover title="查询参数" trigger="click">
+                  <template #content>
+                    <pre style="max-width: 300px; overflow: auto">{{ formatQueryParams(record.query_params) }}</pre>
+                  </template>
+                  <a-button type="link">查看参数</a-button>
+                </a-popover>
+              </template>
+              
+              <template v-if="column.key === 'query_time'">
+                {{ formatDate(record.query_time) }}
+              </template>
+              
+              <template v-if="column.key === 'action'">
+                <a-button 
+                  type="link" 
+                  size="small" 
+                  @click="replayQuery(record)"
+                  :disabled="!canReplayQuery(record)"
+                >
+                  <template #icon><redo-outlined /></template>
+                  重新查询
+                </a-button>
+              </template>
+            </template>
+          </a-table>
+        </a-card>
+      </a-col>
+    </a-row>
+    
+    <a-row :gutter="16" style="margin-top: 16px">
+      <a-col :span="12">
+        <a-card title="查询统计" :loading="loading">
+          <a-row :gutter="16">
+            <a-col :span="8">
+              <a-statistic
+                title="总查询次数"
+                :value="statistics.total_queries"
+                style="margin-bottom: 16px"
+              />
+            </a-col>
+            <a-col :span="8">
+              <a-statistic
+                title="标准查询"
+                :value="statistics.standard_queries"
+                style="margin-bottom: 16px"
+              />
+            </a-col>
+            <a-col :span="8">
+              <a-statistic
+                title="PIR查询"
+                :value="statistics.pir_queries"
+                :valueStyle="{ color: '#1890ff' }"
+                style="margin-bottom: 16px"
+              />
+            </a-col>
+          </a-row>
+          
+          <a-progress 
+            :percent="pirProtectionRatio" 
+            :stroke-color="{ from: '#108ee9', to: '#87d068' }"
+            status="active"
+          />
+          <div style="text-align: center; margin-top: 8px; color: rgba(0, 0, 0, 0.45)">
+            隐私保护率: {{ pirProtectionRatio.toFixed(2) }}%
+          </div>
+        </a-card>
+      </a-col>
+      
+      <a-col :span="12">
+        <a-card title="查询类型分布" :loading="loading">
+          <div ref="queryTypesChart" style="height: 300px"></div>
+        </a-card>
+      </a-col>
+    </a-row>
+    
+    <a-row :gutter="16" style="margin-top: 16px">
+      <a-col :span="24">
+        <a-card title="月度查询趋势" :loading="loading">
+          <div ref="monthlyStatsChart" style="height: 300px"></div>
+        </a-card>
+      </a-col>
+    </a-row>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, nextTick } from 'vue';
 import { message } from 'ant-design-vue';
-import { DownloadOutlined, DeleteOutlined } from '@ant-design/icons-vue';
 import dayjs from 'dayjs';
-import { 
-  getPirQueryHistory, 
-  getPirQueryDetails,
-  deletePirQuery, 
-  clearAllPirQueries,
-  repeatPirQuery,
-  exportPirQueryHistory
-} from '@/api/pir-queries';
+import * as echarts from 'echarts/core';
+import {
+  TitleComponent,
+  TooltipComponent,
+  LegendComponent,
+  GridComponent
+} from 'echarts/components';
+import { PieChart, BarChart } from 'echarts/charts';
+import { LabelLayout } from 'echarts/features';
+import { CanvasRenderer } from 'echarts/renderers';
+import { getPirHistory, getPirStatistics, pirQueryHealthRecords } from '@/api/health';
+import type { QueryHistoryItem, PIRStatisticsResponse, PIRQueryRequest } from '@/types/health';
+import type { TablePaginationConfig } from 'ant-design-vue';
+import { RedoOutlined } from '@ant-design/icons-vue';
+import { useRouter } from 'vue-router';
 
-// 状态变量
-const loading = ref(false);
-const exporting = ref(false);
-const dateRange = ref([]);
-const queryType = ref('');
-const queries = ref([]);
-const total = ref(0);
-const current = ref(1);
-const pageSize = ref(10);
+// 注册 ECharts 组件
+echarts.use([
+  TitleComponent,
+  TooltipComponent,
+  LegendComponent,
+  GridComponent,
+  PieChart,
+  BarChart,
+  LabelLayout,
+  CanvasRenderer
+]);
 
-// 查询详情相关
-const detailModalVisible = ref(false);
-const currentQuery = ref(null);
+const router = useRouter();
 
-// 查询参数列定义
-const paramColumns = [
+// 数据加载状态
+const loading = ref(true);
+
+// 查询历史
+const queryHistory = ref<QueryHistoryItem[]>([]);
+const pagination = reactive({
+  current: 1,
+  pageSize: 10,
+  total: 0,
+  showSizeChanger: true,
+  pageSizeOptions: ['10', '20', '50']
+});
+
+// 查询类型筛选
+const filterType = ref<string>('all');
+
+// 统计数据
+const statistics = reactive<PIRStatisticsResponse>({
+  total_queries: 0,
+  standard_queries: 0,
+  pir_queries: 0,
+  privacy_protection_ratio: 0,
+  query_types: {},
+  monthly_stats: {}
+});
+
+// 表格列定义
+const columns = [
   {
-    title: '参数名',
-    dataIndex: 'name',
-    key: 'name',
-    width: '30%',
+    title: '查询类型',
+    dataIndex: 'query_type',
+    key: 'query_type',
+    width: 130
   },
   {
-    title: '参数值',
-    dataIndex: 'value',
-    key: 'value',
+    title: '隐私保护',
+    dataIndex: 'is_anonymous',
+    key: 'is_anonymous',
+    width: 120
+  },
+  {
+    title: '查询参数',
+    key: 'query_params',
+    width: 120
+  },
+  {
+    title: '查询时间',
+    dataIndex: 'query_time',
+    key: 'query_time',
+    width: 180,
+    sorter: true
+  },
+  {
+    title: '操作',
+    key: 'action',
+    width: 120
   }
 ];
+
+// 隐私保护率
+const pirProtectionRatio = computed(() => statistics.privacy_protection_ratio);
+
+// 获取查询类型名称
+const getQueryTypeName = (type: string): string => {
+  const typeMap: Record<string, string> = {
+    'records': '健康记录查询',
+    'record_detail': '记录详情查询',
+    'advanced_search': '高级搜索',
+    'pir_query': 'PIR隐匿查询',
+    'statistics': '统计数据查询',
+    'shared_records': '共享记录查询'
+  };
+  return typeMap[type] || type;
+};
+
+// 获取查询类型颜色
+const getQueryTypeColor = (type: string): string => {
+  const colorMap: Record<string, string> = {
+    'records': '#1890ff',
+    'record_detail': '#13c2c2',
+    'advanced_search': '#52c41a',
+    'pir_query': '#722ed1',
+    'statistics': '#fa8c16',
+    'shared_records': '#eb2f96'
+  };
+  return colorMap[type] || '#d9d9d9';
+};
+
+// 格式化日期
+const formatDate = (dateString: string | undefined): string => {
+  if (!dateString) return '未记录';
+  return dayjs(dateString).format('YYYY-MM-DD HH:mm:ss');
+};
+
+// 格式化查询参数
+const formatQueryParams = (params: any): string => {
+  if (!params) return '无参数';
+  try {
+    if (typeof params === 'string') {
+      return params;
+    }
+    return JSON.stringify(params, null, 2);
+  } catch (e) {
+    return String(params);
+  }
+};
+
+// 判断查询是否可以重放
+const canReplayQuery = (record: QueryHistoryItem): boolean => {
+  // 只有健康记录查询和PIR查询可以重放
+  return ['records', 'pir_query'].includes(record.query_type);
+};
+
+// 重新执行查询
+const replayQuery = (record: QueryHistoryItem) => {
+  if (!canReplayQuery(record)) return;
+  
+  if (record.query_type === 'pir_query') {
+    // 导航到PIR查询页面并填充参数
+    router.push({
+      path: '/patient/pir-query',
+      query: record.query_params as any
+    });
+  } else if (record.query_type === 'records') {
+    // 导航到记录页面并填充参数
+    router.push({
+      path: '/patient/records',
+      query: record.query_params as any
+    });
+  }
+};
+
+// 筛选变更处理
+const handleFilterChange = () => {
+  pagination.current = 1;
+  fetchQueryHistory();
+};
 
 // 获取查询历史
 const fetchQueryHistory = async () => {
   loading.value = true;
   try {
-    const params = {
-      page: current.value,
-      pageSize: pageSize.value,
-      queryType: queryType.value,
-      startDate: dateRange.value && dateRange.value[0] ? dayjs(dateRange.value[0]).format('YYYY-MM-DD') : undefined,
-      endDate: dateRange.value && dateRange.value[1] ? dayjs(dateRange.value[1]).format('YYYY-MM-DD') : undefined,
-    };
+    const response = await getPirHistory(
+      pagination.current,
+      pagination.pageSize,
+      filterType.value === 'pir'
+    );
     
-    const response = await getPirQueryHistory(params);
     if (response.success && response.data) {
-      queries.value = response.data.queries;
-      total.value = response.data.total;
+      queryHistory.value = response.data.history;
+      pagination.total = response.data.total;
     }
   } catch (error) {
     console.error('获取查询历史失败:', error);
@@ -259,225 +311,197 @@ const fetchQueryHistory = async () => {
   }
 };
 
-// 切换页码
-const handlePageChange = (page) => {
-  current.value = page;
-  fetchQueryHistory();
-};
-
-// 处理日期范围变化
-const handleDateRangeChange = () => {
-  // 日期范围变化时不立即触发查询，等待用户点击筛选按钮
-  console.log('日期范围已更改:', dateRange.value);
-};
-
-// 处理筛选
-const handleFilterChange = () => {
-  current.value = 1; // 重置到第一页
-  fetchQueryHistory();
-};
-
-// 重置筛选
-const resetFilters = () => {
-  dateRange.value = [];
-  queryType.value = '';
-  current.value = 1;
-  fetchQueryHistory();
-};
-
-// 查看查询详情
-const viewQueryDetails = async (query) => {
+// 获取PIR统计数据
+const fetchPirStatistics = async () => {
   try {
-    const response = await getPirQueryDetails(query.id);
+    const response = await getPirStatistics();
     if (response.success && response.data) {
-      currentQuery.value = response.data;
-      detailModalVisible.value = true;
-    }
-  } catch (error) {
-    console.error('获取查询详情失败:', error);
-    message.error('获取查询详情失败');
-  }
-};
-
-// 重新执行查询
-const repeatQuery = async (query) => {
-  try {
-    const response = await repeatPirQuery(query.id);
-    if (response.success) {
-      message.success('查询已重新提交，稍后将显示结果');
-      setTimeout(() => {
-        fetchQueryHistory();
-      }, 2000);
-    } else {
-      message.error(response.message || '重新查询失败');
-    }
-  } catch (error) {
-    console.error('重新查询失败:', error);
-    message.error('重新查询失败');
-  }
-};
-
-// 删除查询
-const deleteQuery = async (query) => {
-  try {
-    const response = await deletePirQuery(query.id);
-    if (response.success) {
-      message.success('查询记录已删除');
-      fetchQueryHistory();
-    } else {
-      message.error(response.message || '删除查询失败');
-    }
-  } catch (error) {
-    console.error('删除查询失败:', error);
-    message.error('删除查询失败');
-  }
-};
-
-// 导出查询历史
-const exportQueryHistory = async () => {
-  exporting.value = true;
-  try {
-    const response = await exportPirQueryHistory();
-    if (response.success && response.data) {
-      const { download_url } = response.data;
+      Object.assign(statistics, response.data);
       
-      // 创建下载链接
-      const a = document.createElement('a');
-      a.href = download_url;
-      a.download = `pir_query_history_${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      
-      message.success('查询历史已导出');
-    } else {
-      message.error(response.message || '导出查询历史失败');
+      // 渲染图表
+      await nextTick();
+      renderQueryTypesChart();
+      renderMonthlyStatsChart();
     }
   } catch (error) {
-    console.error('导出查询历史失败:', error);
-    message.error('导出查询历史失败');
-  } finally {
-    exporting.value = false;
+    console.error('获取PIR统计数据失败:', error);
+    message.error('获取PIR统计数据失败');
   }
 };
 
-// 清除所有历史
-const clearAllHistory = async () => {
-  try {
-    const response = await clearAllPirQueries();
-    if (response.success) {
-      message.success('所有查询历史已清除');
-      queries.value = [];
-      total.value = 0;
-    } else {
-      message.error(response.message || '清除查询历史失败');
-    }
-  } catch (error) {
-    console.error('清除查询历史失败:', error);
-    message.error('清除查询历史失败');
-  }
-};
-
-// 工具函数
-const formatDate = (dateString, withTime = false) => {
-  if (!dateString) return '';
-  return withTime 
-    ? dayjs(dateString).format('YYYY-MM-DD HH:mm:ss') 
-    : dayjs(dateString).format('YYYY-MM-DD');
-};
-
-const getQueryTypeName = (type) => {
-  const types = {
-    'disease': '疾病查询',
-    'medication': '药物查询',
-    'symptom': '症状查询',
-    'treatment': '治疗方案',
-    'other': '其他查询'
-  };
-  return types[type] || '未知类型';
-};
-
-const getQueryTypeColor = (type) => {
-  const colors = {
-    'disease': '#1890ff',
-    'medication': '#52c41a',
-    'symptom': '#faad14',
-    'treatment': '#722ed1',
-    'other': '#bfbfbf'
-  };
-  return colors[type] || '#bfbfbf';
-};
-
-const getQueryTypeIcon = (type) => {
-  const icons = {
-    'disease': 'D',
-    'medication': 'M',
-    'symptom': 'S',
-    'treatment': 'T',
-    'other': 'O'
-  };
-  return icons[type] || '?';
-};
-
-const getQueryDescription = (query) => {
-  return `${query.description || '无描述'} · ${formatDate(query.query_time)}`;
-};
-
-const getStatusText = (status) => {
-  const statusMap = {
-    'pending': '处理中',
-    'completed': '已完成',
-    'failed': '失败',
-    'canceled': '已取消'
-  };
-  return statusMap[status] || '未知状态';
-};
-
-const getStatusColor = (status) => {
-  const colorMap = {
-    'pending': 'blue',
-    'completed': 'green',
-    'failed': 'red',
-    'canceled': 'orange'
-  };
-  return colorMap[status] || 'default';
-};
-
-const getSecurityLevelText = (level) => {
-  const levelMap = {
-    1: '基础',
-    2: '标准',
-    3: '高级'
-  };
-  return levelMap[level] || '未知';
-};
-
-const formatDataSize = (bytes) => {
-  if (!bytes) return '0 B';
+// 处理表格变化
+const handleTableChange = (pag: TablePaginationConfig, filters: any, sorter: any) => {
+  pagination.current = pag.current || 1;
+  pagination.pageSize = pag.pageSize || 10;
   
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  let i = 0;
-  while (bytes >= 1024 && i < units.length - 1) {
-    bytes /= 1024;
-    i++;
+  // 重新获取数据
+  fetchQueryHistory();
+};
+
+// 渲染查询类型分布图
+const renderQueryTypesChart = () => {
+  const chartDom = document.getElementById('queryTypesChart');
+  if (!chartDom) return;
+  
+  const chart = echarts.init(chartDom);
+  const queryTypes = statistics.query_types;
+  
+  // 准备数据
+  const data = Object.entries(queryTypes).map(([key, value]) => ({
+    name: getQueryTypeName(key),
+    value: value || 0
+  })).filter(item => item.value > 0);
+  
+  const option = {
+    tooltip: {
+      trigger: 'item',
+      formatter: '{a} <br/>{b}: {c} ({d}%)'
+    },
+    legend: {
+      orient: 'vertical',
+      right: 10,
+      top: 'center',
+      data: data.map(item => item.name)
+    },
+    series: [
+      {
+        name: '查询类型',
+        type: 'pie',
+        radius: ['50%', '70%'],
+        avoidLabelOverlap: false,
+        label: {
+          show: false,
+          position: 'center'
+        },
+        emphasis: {
+          label: {
+            show: true,
+            fontSize: '18',
+            fontWeight: 'bold'
+          }
+        },
+        labelLine: {
+          show: false
+        },
+        data: data
+      }
+    ]
+  };
+  
+  chart.setOption(option);
+};
+
+// 渲染月度统计图表
+const renderMonthlyStatsChart = () => {
+  const chartDom = document.getElementById('monthlyStatsChart');
+  if (!chartDom) return;
+  
+  const chart = echarts.init(chartDom);
+  const monthlyStats = statistics.monthly_stats;
+  
+  // 准备X轴数据 - 最近6个月
+  const months = [];
+  const standardData = [];
+  const pirData = [];
+  
+  const now = dayjs();
+  for (let i = 5; i >= 0; i--) {
+    const month = now.subtract(i, 'month');
+    const monthStr = month.format('YYYY-MM');
+    months.push(monthStr);
+    
+    // 假设monthlyStats格式为 { "2023-01": 10, "2023-01-pir": 5, ... }
+    const total = monthlyStats[monthStr] || 0;
+    const pir = monthlyStats[`${monthStr}-pir`] || 0;
+    
+    pirData.push(pir);
+    standardData.push(total - pir);
   }
   
-  return `${bytes.toFixed(2)} ${units[i]}`;
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow'
+      }
+    },
+    legend: {
+      data: ['标准查询', 'PIR查询']
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      containLabel: true
+    },
+    xAxis: [
+      {
+        type: 'category',
+        data: months
+      }
+    ],
+    yAxis: [
+      {
+        type: 'value'
+      }
+    ],
+    series: [
+      {
+        name: '标准查询',
+        type: 'bar',
+        stack: 'total',
+        emphasis: {
+          focus: 'series'
+        },
+        data: standardData
+      },
+      {
+        name: 'PIR查询',
+        type: 'bar',
+        stack: 'total',
+        emphasis: {
+          focus: 'series'
+        },
+        data: pirData,
+        itemStyle: {
+          color: '#1890ff'
+        }
+      }
+    ]
+  };
+  
+  chart.setOption(option);
 };
 
-onMounted(() => {
-  fetchQueryHistory();
+// 初始化
+onMounted(async () => {
+  // 并行加载数据
+  await Promise.all([
+    fetchQueryHistory(),
+    fetchPirStatistics()
+  ]);
+  
+  // 监听窗口大小变化，调整图表尺寸
+  window.addEventListener('resize', function() {
+    const chartElements = [
+      document.getElementById('queryTypesChart'),
+      document.getElementById('monthlyStatsChart')
+    ];
+    
+    chartElements.forEach(element => {
+      if (element) {
+        const chart = echarts.getInstanceByDom(element);
+        if (chart) {
+          chart.resize();
+        }
+      }
+    });
+  });
 });
 </script>
 
 <style scoped>
-.query-time {
-  color: #999;
-  font-size: 12px;
-}
-
-pre {
-  white-space: pre-wrap;
-  word-wrap: break-word;
+.pir-history-container {
+  width: 100%;
 }
 </style> 

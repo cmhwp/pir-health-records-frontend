@@ -1,365 +1,524 @@
 <template>
-  <div>
+  <div class="add-record-container">
     <a-page-header
       title="添加健康记录"
-      sub-title="录入您的健康数据"
+      @back="goBack"
     />
-    <a-card style="margin-top: 16px">
-      <a-form
-        :model="formState"
-        name="addRecordForm"
-        :label-col="{ span: 6 }"
-        :wrapper-col="{ span: 14 }"
-        @finish="onFinish"
-        @finishFailed="onFinishFailed"
-      >
-        <!-- 记录类型选择 -->
-        <a-form-item
-          label="记录类型"
-          name="record_type"
-          :rules="[{ required: true, message: '请选择记录类型' }]"
-        >
-          <a-select
-            v-model:value="formState.record_type"
-            placeholder="请选择记录类型"
-            @change="handleRecordTypeChange"
-          >
-            <a-select-option value="general">一般体检</a-select-option>
-            <a-select-option value="blood_test">血液检查</a-select-option>
-            <a-select-option value="imaging">影像检查</a-select-option>
-            <a-select-option value="chronic_disease">慢性病监测</a-select-option>
-            <a-select-option value="treatment">治疗记录</a-select-option>
-            <a-select-option value="other">其他</a-select-option>
-          </a-select>
-        </a-form-item>
-
-        <!-- 动态表单项 - 根据记录类型改变 -->
-        <template v-if="formState.record_type === 'general'">
-          <a-form-item
-            label="身高 (cm)"
-            name="height"
-            :rules="[{ required: true, message: '请输入身高' }]"
-          >
-            <a-input-number v-model:value="formState.height" :min="50" :max="250" style="width: 100%" />
-          </a-form-item>
-          <a-form-item
-            label="体重 (kg)"
-            name="weight"
-            :rules="[{ required: true, message: '请输入体重' }]"
-          >
-            <a-input-number v-model:value="formState.weight" :min="20" :max="200" :precision="1" style="width: 100%" />
-          </a-form-item>
-          <a-form-item
-            label="血压 (mmHg)"
-            name="blood_pressure"
-          >
-            <a-input-group compact>
-              <a-input-number 
-                v-model:value="formState.systolic" 
-                style="width: 45%" 
-                :min="50" 
-                :max="250"
-                placeholder="收缩压"
+    
+    <a-form
+      :model="formState"
+      :rules="rules"
+      layout="vertical"
+      ref="formRef"
+    >
+      <a-row :gutter="16">
+        <a-col :span="16">
+          <a-card title="基本信息">
+            <a-form-item name="title" label="记录标题" required>
+              <a-input
+                v-model:value="formState.record_data.title"
+                placeholder="请输入记录标题"
+                :maxLength="100"
+                show-count
               />
-              <span style="width: 10%; text-align: center; line-height: 32px">/</span>
-              <a-input-number 
-                v-model:value="formState.diastolic" 
-                style="width: 45%" 
-                :min="30" 
-                :max="150" 
-                placeholder="舒张压" 
+            </a-form-item>
+            
+            <a-form-item name="record_type" label="记录类型" required>
+              <a-select
+                v-model:value="formState.record_data.record_type"
+                placeholder="请选择记录类型"
+                style="width: 100%"
+                @change="handleRecordTypeChange"
+              >
+                <a-select-option v-for="type in recordTypeOptions" :key="type.value" :value="type.value">
+                  {{ type.label }}
+                </a-select-option>
+              </a-select>
+            </a-form-item>
+            
+            <a-row :gutter="16">
+              <a-col :span="12">
+                <a-form-item name="record_date" label="记录日期" required>
+                  <a-date-picker
+                    v-model:value="recordDate"
+                    style="width: 100%"
+                    :disabledDate="disabledDate"
+                    @change="handleDateChange"
+                  />
+                </a-form-item>
+              </a-col>
+              <a-col :span="12">
+                <a-form-item name="visibility" label="可见性">
+                  <a-select
+                    v-model:value="formState.record_data.visibility"
+                    placeholder="请选择记录可见性"
+                  >
+                    <a-select-option :value="RecordVisibility.PRIVATE">仅自己可见</a-select-option>
+                    <a-select-option :value="RecordVisibility.PUBLIC">所有人可见</a-select-option>
+                    <a-select-option :value="RecordVisibility.DOCTOR">医生可见</a-select-option>
+                    <a-select-option :value="RecordVisibility.RESEARCHER">研究人员可见</a-select-option>
+                  </a-select>
+                </a-form-item>
+              </a-col>
+            </a-row>
+            
+            <a-row :gutter="16">
+              <a-col :span="12">
+                <a-form-item name="institution" label="医疗机构">
+                  <a-input
+                    v-model:value="formState.record_data.institution"
+                    placeholder="请输入医疗机构名称"
+                  />
+                </a-form-item>
+              </a-col>
+              <a-col :span="12">
+                <a-form-item name="doctor_name" label="医生姓名">
+                  <a-input
+                    v-model:value="formState.record_data.doctor_name"
+                    placeholder="请输入医生姓名"
+                  />
+                </a-form-item>
+              </a-col>
+            </a-row>
+            
+            <a-form-item name="description" label="记录描述">
+              <a-textarea
+                v-model:value="formState.record_data.description"
+                placeholder="请输入记录描述"
+                :rows="4"
+                :maxLength="500"
+                show-count
               />
-            </a-input-group>
-          </a-form-item>
-          <a-form-item
-            label="心率 (bpm)"
-            name="heart_rate"
-          >
-            <a-input-number v-model:value="formState.heart_rate" :min="30" :max="220" style="width: 100%" />
-          </a-form-item>
-        </template>
-
-        <template v-else-if="formState.record_type === 'blood_test'">
-          <a-form-item
-            label="血红蛋白 (g/L)"
-            name="hemoglobin"
-          >
-            <a-input-number v-model:value="formState.hemoglobin" :min="0" :max="300" style="width: 100%" />
-          </a-form-item>
-          <a-form-item
-            label="白细胞 (×10^9/L)"
-            name="white_blood_cells"
-          >
-            <a-input-number v-model:value="formState.white_blood_cells" :min="0" :max="100" :precision="2" style="width: 100%" />
-          </a-form-item>
-          <a-form-item
-            label="血小板 (×10^9/L)"
-            name="platelets"
-          >
-            <a-input-number v-model:value="formState.platelets" :min="0" :max="1000" style="width: 100%" />
-          </a-form-item>
-          <a-form-item
-            label="血糖 (mmol/L)"
-            name="glucose"
-          >
-            <a-input-number v-model:value="formState.glucose" :min="0" :max="50" :precision="1" style="width: 100%" />
-          </a-form-item>
-        </template>
-
-        <template v-else-if="formState.record_type === 'chronic_disease'">
-          <a-form-item
-            label="疾病类型"
-            name="disease_type"
-          >
-            <a-select v-model:value="formState.disease_type" placeholder="请选择慢性病类型">
-              <a-select-option value="diabetes">糖尿病</a-select-option>
-              <a-select-option value="hypertension">高血压</a-select-option>
-              <a-select-option value="heart_disease">心脏病</a-select-option>
-              <a-select-option value="respiratory">呼吸系统疾病</a-select-option>
-              <a-select-option value="other">其他</a-select-option>
-            </a-select>
-          </a-form-item>
-          <a-form-item
-            label="测量结果"
-            name="measurement"
-          >
-            <a-input v-model:value="formState.measurement" placeholder="请输入测量结果" />
-          </a-form-item>
-          <a-form-item
-            label="药物治疗"
-            name="medication"
-          >
-            <a-textarea v-model:value="formState.medication" placeholder="请输入正在服用的药物" :rows="2" />
-          </a-form-item>
-        </template>
-
-        <!-- 通用字段 -->
-        <a-form-item
-          label="检查日期"
-          name="exam_date"
-          :rules="[{ required: true, message: '请选择检查日期' }]"
-        >
-          <a-date-picker v-model:value="formState.exam_date" style="width: 100%" />
-        </a-form-item>
-
-        <a-form-item
-          label="医疗机构"
-          name="institution"
-        >
-          <a-input v-model:value="formState.institution" placeholder="请输入医疗机构名称" />
-        </a-form-item>
-
-        <a-form-item
-          label="医生姓名"
-          name="doctor_name"
-        >
-          <a-input v-model:value="formState.doctor_name" placeholder="请输入医生姓名" />
-        </a-form-item>
-
-        <a-form-item
-          label="备注"
-          name="notes"
-        >
-          <a-textarea v-model:value="formState.notes" placeholder="其他备注信息" :rows="3" />
-        </a-form-item>
-
-        <a-form-item
-          label="隐私级别"
-          name="privacy_level"
-          :rules="[{ required: true, message: '请选择隐私级别' }]"
-        >
-          <a-radio-group v-model:value="formState.privacy_level">
-            <a-radio :value="1">公开(医生可见)</a-radio>
-            <a-radio :value="2">半私密(仅特定医生可见)</a-radio>
-            <a-radio :value="3">私密(仅自己可见)</a-radio>
-          </a-radio-group>
-        </a-form-item>
-
-        <a-form-item
-          label="添加文件"
-          name="attachments"
-        >
-          <a-upload
-            v-model:fileList="fileList"
-            :action="uploadUrl"
-            :headers="uploadHeaders"
-            :before-upload="beforeUpload"
-            @change="handleUploadChange"
-          >
-            <a-button>
-              <upload-outlined />
-              上传文件
-            </a-button>
-            <a-text style="margin-left: 8px; color: #999">支持PDF、图片等格式</a-text>
-          </a-upload>
-        </a-form-item>
-
-        <a-form-item :wrapper-col="{ offset: 6, span: 14 }">
-          <a-space>
-            <a-button type="primary" html-type="submit" :loading="submitting">
-              保存记录
-            </a-button>
-            <a-button @click="resetForm">
-              重置
-            </a-button>
-          </a-space>
-        </a-form-item>
-      </a-form>
-    </a-card>
+            </a-form-item>
+            
+            <a-form-item name="tags" label="标签">
+              <a-select
+                v-model:value="tags"
+                mode="tags"
+                style="width: 100%"
+                placeholder="输入标签，回车确认"
+                @change="handleTagsChange"
+              >
+                <a-select-option v-for="tag in tagOptions" :key="tag" :value="tag">
+                  {{ tag }}
+                </a-select-option>
+              </a-select>
+            </a-form-item>
+          </a-card>
+          
+          <!-- 用药记录特定字段 -->
+          <a-card v-if="formState.record_data.record_type === RecordType.MEDICATION" title="用药信息" style="margin-top: 16px">
+            <a-form-item name="medication_name" label="药物名称" required>
+              <a-input
+                v-model:value="formState.record_data.medication.medication_name"
+                placeholder="请输入药物名称"
+              />
+            </a-form-item>
+            
+            <a-row :gutter="16">
+              <a-col :span="12">
+                <a-form-item name="dosage" label="剂量">
+                  <a-input
+                    v-model:value="formState.record_data.medication.dosage"
+                    placeholder="请输入剂量，如100mg"
+                  />
+                </a-form-item>
+              </a-col>
+              <a-col :span="12">
+                <a-form-item name="frequency" label="频率">
+                  <a-input
+                    v-model:value="formState.record_data.medication.frequency"
+                    placeholder="请输入用药频率，如每日三次"
+                  />
+                </a-form-item>
+              </a-col>
+            </a-row>
+            
+            <a-row :gutter="16">
+              <a-col :span="12">
+                <a-form-item name="start_date" label="开始日期">
+                  <a-date-picker
+                    v-model:value="medicationStartDate"
+                    style="width: 100%"
+                    @change="handleMedicationStartDateChange"
+                  />
+                </a-form-item>
+              </a-col>
+              <a-col :span="12">
+                <a-form-item name="end_date" label="结束日期">
+                  <a-date-picker
+                    v-model:value="medicationEndDate"
+                    style="width: 100%"
+                    :disabled-date="disabledEndDate"
+                    @change="handleMedicationEndDateChange"
+                  />
+                </a-form-item>
+              </a-col>
+            </a-row>
+            
+            <a-form-item name="instructions" label="用药说明">
+              <a-textarea
+                v-model:value="formState.record_data.medication.instructions"
+                placeholder="请输入用药说明"
+                :rows="3"
+              />
+            </a-form-item>
+            
+            <a-form-item name="side_effects" label="副作用">
+              <a-textarea
+                v-model:value="formState.record_data.medication.side_effects"
+                placeholder="请输入可能的副作用"
+                :rows="3"
+              />
+            </a-form-item>
+          </a-card>
+        </a-col>
+        
+        <a-col :span="8">
+          <a-card title="文件上传">
+            <p>上传相关医疗文件(可选)</p>
+            <a-upload
+              v-model:file-list="fileList"
+              :before-upload="beforeUpload"
+              @remove="handleRemove"
+              multiple
+              list-type="picture"
+            >
+              <a-button>
+                <upload-outlined /> 选择文件
+              </a-button>
+              <template #itemRender="{ file }">
+                <a-card size="small" style="margin-bottom: 8px">
+                  <template #title>
+                    <div style="display: flex; align-items: center">
+                      <file-outlined style="margin-right: 8px" />
+                      <div style="overflow: hidden; text-overflow: ellipsis">{{ file.name }}</div>
+                    </div>
+                  </template>
+                  <template #extra>
+                    <a-button type="text" danger @click="() => handleRemove(file)">
+                      <delete-outlined />
+                    </a-button>
+                  </template>
+                  <div>
+                    <div>大小: {{ formatFileSize(file.size || 0) }}</div>
+                    <a-input 
+                      placeholder="添加文件描述" 
+                      style="margin-top: 8px"
+                      v-model:value="file.description"
+                    />
+                  </div>
+                </a-card>
+              </template>
+            </a-upload>
+            <a-alert
+              style="margin-top: 16px"
+              message="支持上传PDF、图片、Word和Excel文件，单个文件不超过10MB"
+              type="info"
+              show-icon
+            />
+          </a-card>
+          
+          <a-card title="隐私保护" style="margin-top: 16px">
+            <a-form-item>
+              <a-switch
+                v-model:checked="pirProtected"
+                checked-children="启用PIR隐私保护"
+                un-checked-children="未启用PIR保护"
+              />
+              <div style="margin-top: 8px; color: rgba(0, 0, 0, 0.45); font-size: 14px">
+                启用PIR技术保护您的健康记录，提高数据隐私安全性
+              </div>
+            </a-form-item>
+            
+            <a-divider />
+            
+            <div style="text-align: center; padding: 16px 0">
+              <a-button type="primary" size="large" :loading="submitting" block @click="handleSubmit">
+                保存记录
+              </a-button>
+              <a-button style="margin-top: 16px" block @click="goBack">
+                取消
+              </a-button>
+            </div>
+          </a-card>
+        </a-col>
+      </a-row>
+    </a-form>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { message } from 'ant-design-vue';
-import type { UploadProps } from 'ant-design-vue';
-import { UploadOutlined } from '@ant-design/icons-vue';
-import { addHealthRecord } from '@/api/health-records';
+import type { FormInstance } from 'ant-design-vue';
 import dayjs from 'dayjs';
+import { 
+  UploadOutlined,
+  FileOutlined,
+  DeleteOutlined
+} from '@ant-design/icons-vue';
+import { createHealthRecord } from '@/api/health';
+import { RecordType, RecordVisibility, type CreateRecordRequest, type MedicationInfo } from '@/types/health';
+
+// Define an extended version of record data with required medication
+interface ExtendedRecordData {
+  title: string;
+  record_type: RecordType;
+  description: string;
+  record_date: string;
+  institution: string;
+  doctor_name: string;
+  visibility: RecordVisibility;
+  tags: string;
+  medication: MedicationInfo; // Required, not optional
+}
+
+// Define our own extended request type
+interface ExtendedCreateRecordRequest {
+  record_data: ExtendedRecordData;
+  files?: File[];
+  file_description?: string;
+}
+
+const router = useRouter();
+const formRef = ref<FormInstance>();
+const submitting = ref(false);
+const pirProtected = ref(true);
 
 // 表单状态
-const formState = reactive({
-  record_type: undefined,
-  height: undefined,
-  weight: undefined,
-  systolic: undefined,
-  diastolic: undefined,
-  heart_rate: undefined,
-  hemoglobin: undefined,
-  white_blood_cells: undefined,
-  platelets: undefined,
-  glucose: undefined,
-  disease_type: undefined,
-  measurement: '',
-  medication: '',
-  exam_date: null,
-  institution: '',
-  doctor_name: '',
-  notes: '',
-  privacy_level: 1,
-  attachments: []
+const formState = reactive<ExtendedCreateRecordRequest>({
+  record_data: {
+    title: '',
+    record_type: RecordType.GENERAL,
+    description: '',
+    record_date: dayjs().format('YYYY-MM-DD'),
+    institution: '',
+    doctor_name: '',
+    visibility: RecordVisibility.PRIVATE,
+    tags: '',
+    medication: {
+      medication_name: '',
+      dosage: '',
+      frequency: '',
+      start_date: '',
+      end_date: '',
+      instructions: '',
+      side_effects: ''
+    }
+  },
+  files: [],
+  file_description: ''
 });
 
-// 文件上传相关
-const fileList = ref([]);
-const submitting = ref(false);
-const uploadUrl = '/api/health-records/upload';
-const uploadHeaders = {
-  Authorization: `Bearer ${localStorage.getItem('token')}`
+// 记录类型选项
+const recordTypeOptions = [
+  { label: '常规检查', value: RecordType.GENERAL },
+  { label: '实验室检查', value: RecordType.LABORATORY },
+  { label: '用药记录', value: RecordType.MEDICATION },
+  { label: '影像检查', value: RecordType.IMAGING },
+  { label: '生命体征', value: RecordType.VITAL_SIGNS },
+  { label: '手术记录', value: RecordType.SURGERY },
+  { label: '疫苗接种', value: RecordType.VACCINATION },
+  { label: '过敏记录', value: RecordType.ALLERGY },
+  { label: '诊断结果', value: RecordType.DIAGNOSIS },
+  { label: '其他记录', value: RecordType.OTHER }
+];
+
+// 表单验证规则
+const rules = {
+  title: [
+    { required: true, message: '请输入记录标题', trigger: 'blur' },
+    { min: 2, max: 100, message: '标题长度在2-100个字符之间', trigger: 'blur' }
+  ],
+  record_type: [
+    { required: true, message: '请选择记录类型', trigger: 'change' }
+  ],
+  record_date: [
+    { required: true, message: '请选择记录日期', trigger: 'change' }
+  ],
+  medication_name: [
+    { required: true, message: '请输入药物名称', trigger: 'blur' }
+  ]
 };
 
-// 处理记录类型变更
-const handleRecordTypeChange = (value: string) => {
-  // 根据记录类型可以执行一些逻辑
-  console.log('记录类型已更改:', value);
+// 文件列表
+const fileList = ref<any[]>([]);
+
+// 日期选择器值
+const recordDate = ref<dayjs.Dayjs>(dayjs());
+const medicationStartDate = ref<dayjs.Dayjs | null>(null);
+const medicationEndDate = ref<dayjs.Dayjs | null>(null);
+
+// 标签
+const tags = ref<string[]>([]);
+const tagOptions = ref<string[]>(['医院检查', '年度体检', '慢性病', '急诊', '定期复查', '预防接种']);
+
+// 日期选择器禁用日期（不能选择未来日期）
+const disabledDate = (current: dayjs.Dayjs) => {
+  return current && current > dayjs().endOf('day');
 };
 
-// 上传前验证
-const beforeUpload: UploadProps['beforeUpload'] = (file) => {
-  const isValidType = 
-    file.type === 'application/pdf' || 
-    file.type.startsWith('image/');
-  
-  if (!isValidType) {
-    message.error('只能上传PDF或图片文件!');
+// 禁用结束日期（不能早于开始日期）
+const disabledEndDate = (current: dayjs.Dayjs) => {
+  return medicationStartDate.value 
+    ? current && current < medicationStartDate.value.startOf('day')
+    : false;
+};
+
+// 处理日期变化
+const handleDateChange = (value: dayjs.Dayjs | null) => {
+  if (value) {
+    formState.record_data.record_date = value.format('YYYY-MM-DD');
+  } else {
+    formState.record_data.record_date = '';
   }
-  
+};
+
+// 处理用药开始日期变化
+const handleMedicationStartDateChange = (value: dayjs.Dayjs | null) => {
+  if (value) {
+    formState.record_data.medication.start_date = value.format('YYYY-MM-DD');
+  } else {
+    formState.record_data.medication.start_date = '';
+  }
+};
+
+// 处理用药结束日期变化
+const handleMedicationEndDateChange = (value: dayjs.Dayjs | null) => {
+  if (value) {
+    formState.record_data.medication.end_date = value.format('YYYY-MM-DD');
+  } else {
+    formState.record_data.medication.end_date = '';
+  }
+};
+
+// 处理记录类型变化
+const handleRecordTypeChange = (value: RecordType) => {
+  // 不需要检查medication是否存在，因为在formState初始化时已经创建
+  if (value === RecordType.MEDICATION) {
+    // 可以重置medication字段为默认值
+    formState.record_data.medication = {
+      medication_name: '',
+      dosage: '',
+      frequency: '',
+      start_date: '',
+      end_date: '',
+      instructions: '',
+      side_effects: ''
+    };
+  }
+};
+
+// 处理标签变化
+const handleTagsChange = (values: string[]) => {
+  formState.record_data.tags = values.join(',');
+};
+
+// 上传前校验
+const beforeUpload = (file: File) => {
+  const isValidType = [
+    'application/pdf',
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/plain'
+  ].includes(file.type);
+
+  if (!isValidType) {
+    message.error('只能上传PDF、图片、Word、Excel或文本文件!');
+  }
+
   const isLt10M = file.size / 1024 / 1024 < 10;
   if (!isLt10M) {
-    message.error('文件大小不能超过10MB!');
+    message.error('文件必须小于10MB!');
   }
-  
+
+  // 添加description属性供后续使用
+  (file as any).description = '';
+
   return isValidType && isLt10M;
 };
 
-// 处理上传状态变化
-const handleUploadChange: UploadProps['onChange'] = (info) => {
-  if (info.file.status === 'done') {
-    message.success(`${info.file.name} 上传成功`);
-    // 将上传成功的文件ID添加到表单数据中
-    formState.attachments.push(info.file.response.fileId);
-  } else if (info.file.status === 'error') {
-    message.error(`${info.file.name} 上传失败`);
-  }
+// 移除文件
+const handleRemove = (file: any) => {
+  const index = fileList.value.indexOf(file);
+  const newFileList = fileList.value.slice();
+  newFileList.splice(index, 1);
+  fileList.value = newFileList;
+};
+
+// 格式化文件大小
+const formatFileSize = (size: number): string => {
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(2)} KB`;
+  return `${(size / 1024 / 1024).toFixed(2)} MB`;
 };
 
 // 提交表单
-const onFinish = async (values: any) => {
-  submitting.value = true;
+const handleSubmit = async () => {
   try {
-    // 组织数据
-    const recordData: any = {
-      record_type: formState.record_type,
-      exam_date: formState.exam_date ? dayjs(formState.exam_date).format('YYYY-MM-DD') : null,
-      institution: formState.institution,
-      doctor_name: formState.doctor_name,
-      notes: formState.notes,
-      privacy_level: formState.privacy_level,
-      attachments: formState.attachments,
+    await formRef.value?.validate();
+    
+    submitting.value = true;
+    
+    // 准备文件描述
+    const fileDescriptions = fileList.value.map(file => file.description || '').join('|');
+    formState.file_description = fileDescriptions;
+    
+    // 准备文件
+    formState.files = fileList.value.map(file => file.originFileObj);
+    
+    // 将扩展类型转换为API期望的类型
+    const apiRequest: CreateRecordRequest = {
+      record_data: formState.record_data,
+      files: formState.files,
+      file_description: formState.file_description
     };
-
-    // 根据记录类型添加对应的数据
-    if (formState.record_type === 'general') {
-      recordData.metrics = {
-        height: formState.height,
-        weight: formState.weight,
-        blood_pressure: formState.systolic && formState.diastolic 
-          ? `${formState.systolic}/${formState.diastolic}` 
-          : null,
-        heart_rate: formState.heart_rate
-      };
-    } else if (formState.record_type === 'blood_test') {
-      recordData.metrics = {
-        hemoglobin: formState.hemoglobin,
-        white_blood_cells: formState.white_blood_cells,
-        platelets: formState.platelets,
-        glucose: formState.glucose
-      };
-    } else if (formState.record_type === 'chronic_disease') {
-      recordData.metrics = {
-        disease_type: formState.disease_type,
-        measurement: formState.measurement,
-        medication: formState.medication
-      };
-    }
-
-    const response = await addHealthRecord(recordData);
+    
+    // 提交请求
+    const response = await createHealthRecord(apiRequest);
+    
     if (response.success) {
-      message.success('健康记录添加成功!');
-      resetForm();
+      message.success('健康记录创建成功');
+      // 返回记录列表
+      router.push('/patient/records');
     } else {
-      message.error(response.message || '添加记录失败，请重试');
+      message.error(response.message || '创建记录失败');
     }
   } catch (error) {
-    console.error('添加健康记录失败:', error);
-    message.error('添加记录失败，请检查网络连接');
+    if (error instanceof Error) {
+      console.error('表单验证失败:', error);
+      message.error('请检查表单填写是否正确');
+    } else {
+      console.error('创建记录失败:', error);
+      message.error('创建记录失败');
+    }
   } finally {
     submitting.value = false;
   }
 };
 
-// 提交失败
-const onFinishFailed = (errorInfo: any) => {
-  console.log('表单验证失败:', errorInfo);
-  message.error('请检查表单填写是否正确');
+// 返回
+const goBack = () => {
+  router.back();
 };
 
-// 重置表单
-const resetForm = () => {
-  for (const key in formState) {
-    formState[key] = Array.isArray(formState[key]) ? [] : undefined;
-  }
-  formState.privacy_level = 1;
-  formState.notes = '';
-  formState.institution = '';
-  formState.doctor_name = '';
-  fileList.value = [];
-};
+// 初始化
+onMounted(() => {
+  // 初始化记录日期为今天
+  recordDate.value = dayjs();
+  formState.record_data.record_date = dayjs().format('YYYY-MM-DD');
+});
 </script>
 
 <style scoped>
-.ant-upload-list {
-  max-height: 300px;
-  overflow-y: auto;
+.add-record-container {
+  width: 100%;
 }
 </style> 

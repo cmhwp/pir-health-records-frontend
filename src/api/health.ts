@@ -1,0 +1,363 @@
+import request from '@/utils/request';
+import type { ApiResponse } from '../types/auth';
+import type {
+  AdvancedSearchRequest,
+  AdvancedSearchResponse,
+  BatchUpdateVisibilityRequest,
+  BatchUploadRecordsRequest,
+  BatchUploadResponse,
+  CreateRecordRequest,
+  CreateRecordResponse,
+  CreateVersionRequest,
+  ExportRecordsRequest,
+  ExportRecordsResponse,
+  GetRecordsParams,
+  GetRecordsResponse,
+  GetVersionResponse,
+  HealthRecord,
+  HealthStatisticsResponse,
+  ImportRecordsResponse,
+  PIRQueryRequest,
+  PIRQueryResponse,
+  PIRSettingsResponse,
+  PIRStatisticsResponse,
+  QueryHistoryResponse,
+  RecordVersionsResponse,
+  RestoreVersionRequest,
+  SearchFilter,
+  SecureDeleteRequest,
+  ShareRecordRequest,
+  SharedRecordsResponse,
+  UpdatePIRSettingsRequest,
+  UpdateRecordRequest,
+  ViewSharedRecordResponse
+} from '../types/health';
+
+const API_PATH = '/health';
+
+/**
+ * 创建健康记录
+ */
+export const createHealthRecord = async (
+  data: CreateRecordRequest
+): Promise<ApiResponse<CreateRecordResponse>> => {
+  const formData = new FormData();
+  
+  // 添加记录数据
+  formData.append('record_data', JSON.stringify(data.record_data));
+  
+  // 添加文件
+  if (data.files && data.files.length > 0) {
+    data.files.forEach(file => {
+      formData.append('files', file);
+    });
+  }
+  
+  // 添加文件描述
+  if (data.file_description) {
+    formData.append('file_description', data.file_description);
+  }
+  
+  return request.post(`${API_PATH}/records`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+};
+
+/**
+ * 获取健康记录列表
+ */
+export const getHealthRecords = async (
+  params?: GetRecordsParams
+): Promise<ApiResponse<GetRecordsResponse>> => {
+  return request.get(`${API_PATH}/records`, { params });
+};
+
+/**
+ * 获取单条健康记录
+ */
+export const getHealthRecord = async (
+  recordId: string,
+  anonymous: boolean = false
+): Promise<ApiResponse<{ record: HealthRecord; sql_id: number | null }>> => {
+  return request.get(`${API_PATH}/records/${recordId}`, { 
+    params: { anonymous } 
+  });
+};
+
+/**
+ * 更新健康记录
+ */
+export const updateHealthRecord = async (
+  recordId: string,
+  data: UpdateRecordRequest
+): Promise<ApiResponse<HealthRecord>> => {
+  return request.put(`${API_PATH}/records/${recordId}`, data);
+};
+
+/**
+ * 删除健康记录
+ */
+export const deleteHealthRecord = async (
+  recordId: string
+): Promise<ApiResponse<void>> => {
+  return request.delete(`${API_PATH}/records/${recordId}`);
+};
+
+/**
+ * 获取健康记录文件URL
+ */
+export const getRecordFileUrl = (filename: string): string => {
+  return `${request.defaults.baseURL}${API_PATH}/files/${filename}`;
+};
+
+/**
+ * 获取健康统计数据
+ */
+export const getHealthStatistics = async (
+  anonymous: boolean = false
+): Promise<ApiResponse<HealthStatisticsResponse>> => {
+  return request.get(`${API_PATH}/statistics`, { 
+    params: { anonymous }
+  });
+};
+
+/**
+ * 高级搜索功能
+ */
+export const advancedSearch = async (
+  params: AdvancedSearchRequest
+): Promise<ApiResponse<AdvancedSearchResponse>> => {
+  return request.post(`${API_PATH}/search/advanced`, params);
+};
+
+/**
+ * 获取搜索过滤条件
+ */
+export const getSearchFilters = async (): Promise<ApiResponse<SearchFilter>> => {
+  return request.get(`${API_PATH}/search/filters`);
+};
+
+/**
+ * 共享健康记录
+ */
+export const shareHealthRecord = async (
+  recordId: string,
+  data: ShareRecordRequest
+): Promise<ApiResponse<any>> => {
+  return request.post(`${API_PATH}/records/${recordId}/share`, data);
+};
+
+/**
+ * 获取我共享的记录列表
+ */
+export const getRecordsSharedByMe = async (
+  page: number = 1,
+  perPage: number = 10,
+  validOnly: boolean = true,
+  sharedWith?: number
+): Promise<ApiResponse<SharedRecordsResponse>> => {
+  const params = {
+    page,
+    per_page: perPage,
+    valid_only: validOnly,
+    ...(sharedWith && { shared_with: sharedWith })
+  };
+  
+  return request.get(`${API_PATH}/shared/by-me`, { params });
+};
+
+/**
+ * 获取共享给我的记录列表
+ */
+export const getRecordsSharedWithMe = async (
+  page: number = 1,
+  perPage: number = 10,
+  validOnly: boolean = true,
+  ownerId?: number
+): Promise<ApiResponse<SharedRecordsResponse>> => {
+  const params = {
+    page,
+    per_page: perPage,
+    valid_only: validOnly,
+    ...(ownerId && { owner_id: ownerId })
+  };
+  
+  return request.get(`${API_PATH}/shared/with-me`, { params });
+};
+
+/**
+ * 查看共享记录详情
+ */
+export const viewSharedRecord = async (
+  sharedId: string
+): Promise<ApiResponse<ViewSharedRecordResponse>> => {
+  return request.get(`${API_PATH}/shared/records/${sharedId}`);
+};
+
+/**
+ * 撤销共享
+ */
+export const revokeSharedRecord = async (
+  sharedId: string
+): Promise<ApiResponse<void>> => {
+  return request.delete(`${API_PATH}/shared/${sharedId}`);
+};
+
+/**
+ * PIR隐匿查询健康记录
+ */
+export const pirQueryHealthRecords = async (
+  params: PIRQueryRequest
+): Promise<ApiResponse<PIRQueryResponse>> => {
+  return request.get(`${API_PATH}/pir/records`, { 
+    params: { ...params, anonymous: true } 
+  });
+};
+
+/**
+ * 高级隐匿查询功能
+ */
+export const advancedPirQuery = async (
+  params: PIRQueryRequest
+): Promise<ApiResponse<PIRQueryResponse>> => {
+  return request.post(`${API_PATH}/pir/advanced`, params);
+};
+
+/**
+ * 获取PIR查询统计信息
+ */
+export const getPirStatistics = async (): Promise<ApiResponse<PIRStatisticsResponse>> => {
+  return request.get(`${API_PATH}/pir/statistics`);
+};
+
+/**
+ * 获取所有隐私查询历史
+ */
+export const getPirHistory = async (
+  page: number = 1,
+  perPage: number = 10,
+  onlyPir: boolean = false
+): Promise<ApiResponse<QueryHistoryResponse>> => {
+  return request.get(`${API_PATH}/pir/history`, { 
+    params: { page, per_page: perPage, only_pir: onlyPir } 
+  });
+};
+
+/**
+ * 获取PIR隐私设置
+ */
+export const getPirSettings = async (): Promise<ApiResponse<PIRSettingsResponse>> => {
+  return request.get(`${API_PATH}/pir/settings`);
+};
+
+/**
+ * 更新PIR隐私设置
+ */
+export const updatePirSettings = async (
+  settings: UpdatePIRSettingsRequest
+): Promise<ApiResponse<any>> => {
+  console.log('正在提交的PIR设置:', settings);
+  return request.put(`${API_PATH}/pir/settings`, settings);
+};
+
+/**
+ * 导出健康记录
+ */
+export const exportHealthRecords = async (
+  data: ExportRecordsRequest
+): Promise<ApiResponse<ExportRecordsResponse>> => {
+  return request.post(`${API_PATH}/export`, data);
+};
+
+/**
+ * 获取导出文件下载链接
+ */
+export const getExportDownloadUrl = (filename: string): string => {
+  return `${request.defaults.baseURL}${API_PATH}/export/download/${filename}`;
+};
+
+/**
+ * 导入健康记录
+ */
+export const importHealthRecords = async (
+  file: File
+): Promise<ApiResponse<ImportRecordsResponse>> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  return request.post(`${API_PATH}/import`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+};
+
+/**
+ * 批量上传健康记录
+ */
+export const batchUploadHealthRecords = async (
+  data: BatchUploadRecordsRequest
+): Promise<ApiResponse<BatchUploadResponse>> => {
+  return request.post(`${API_PATH}/records/batch-upload`, data);
+};
+
+/**
+ * 获取健康记录版本历史
+ */
+export const getRecordVersions = async (
+  recordId: string
+): Promise<ApiResponse<RecordVersionsResponse>> => {
+  return request.get(`${API_PATH}/records/${recordId}/versions`);
+};
+
+/**
+ * 创建记录新版本
+ */
+export const createRecordVersion = async (
+  recordId: string,
+  data: CreateVersionRequest
+): Promise<ApiResponse<any>> => {
+  return request.post(`${API_PATH}/records/${recordId}/versions`, data);
+};
+
+/**
+ * 获取特定版本的记录
+ */
+export const getRecordVersion = async (
+  recordId: string,
+  versionNumber: number
+): Promise<ApiResponse<GetVersionResponse>> => {
+  return request.get(`${API_PATH}/records/${recordId}/versions/${versionNumber}`);
+};
+
+/**
+ * 恢复到特定版本
+ */
+export const restoreRecordVersion = async (
+  recordId: string,
+  versionNumber: number,
+  data: RestoreVersionRequest = {}
+): Promise<ApiResponse<any>> => {
+  return request.post(`${API_PATH}/records/${recordId}/versions/${versionNumber}/restore`, data);
+};
+
+/**
+ * 安全删除健康记录
+ */
+export const secureDeleteHealthRecord = async (
+  recordId: string,
+  data: SecureDeleteRequest = {}
+): Promise<ApiResponse<void>> => {
+  return request.delete(`${API_PATH}/records/${recordId}/secure-delete`, { data });
+};
+
+/**
+ * 批量更新记录可见性
+ */
+export const batchUpdateVisibility = async (
+  data: BatchUpdateVisibilityRequest
+): Promise<ApiResponse<any>> => {
+  return request.post(`${API_PATH}/records/batch/visibility`, data);
+}; 

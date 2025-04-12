@@ -83,7 +83,7 @@ declare module 'vue' {
     ATypographyTitle: typeof import('ant-design-vue/es')['TypographyTitle']
     AUpload: typeof import('ant-design-vue/es')['Upload']
     AUploadDragger: typeof import('ant-design-vue/es')['UploadDragger']
-    DashboardContent: typeof import('./src/components/researcher/DashboardContent.vue')['default']
+    DashboardContent: typeof import('./src/components/patient/DashboardContent.vue')['default']
     DoctorInfo: typeof import('./src/components/auth/DoctorInfo.vue')['default']
     PatientInfo: typeof import('./src/components/auth/PatientInfo.vue')['default']
     PirHistoryContent: typeof import('./src/components/patient/PirHistoryContent.vue')['default']
