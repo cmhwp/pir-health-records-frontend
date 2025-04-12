@@ -446,22 +446,22 @@ const resetFilters = () => {
 
 // 查看记录详情
 const viewRecord = (recordId: string) => {
-  router.push(`/patient/records/${recordId}`);
+  router.push(`/patient/record/${recordId}`);
 };
 
 // 编辑记录
 const editRecord = (recordId: string) => {
-  router.push(`/patient/records/${recordId}/edit`);
+  router.push(`/patient/edit-record/${recordId}`);
 };
 
 // 分享记录
 const shareRecord = (recordId: string) => {
-  router.push(`/patient/records/${recordId}/share`);
+  router.push(`/patient/record/${recordId}?action=share`);
 };
 
 // 查看版本历史
 const viewVersions = (recordId: string) => {
-  router.push(`/patient/records/${recordId}/versions`);
+  router.push(`/patient/record/${recordId}?tab=versions`);
 };
 
 // 删除记录

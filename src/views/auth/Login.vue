@@ -8,22 +8,27 @@
         :model="loginForm"
         :rules="rules"
         @finish="handleSubmit"
+        @finishFailed="onFinishFailed"
         layout="vertical"
       >
         <a-form-item name="username" label="用户名/邮箱">
           <a-input v-model:value="loginForm.username" placeholder="请输入用户名或邮箱" />
         </a-form-item>
-        
+
         <a-form-item name="password" label="密码">
           <a-input-password v-model:value="loginForm.password" placeholder="请输入密码" />
         </a-form-item>
-        
+
+        <a-form-item>
+          <a-checkbox v-model:checked="loginForm.remember">记住我</a-checkbox>
+        </a-form-item>
+
         <a-form-item>
           <a-button type="primary" html-type="submit" :loading="loading" block>
             登录
           </a-button>
         </a-form-item>
-        
+
         <div class="login-form-footer">
           <router-link to="/auth/register">没有账号？前往注册</router-link>
         </div>
@@ -35,15 +40,22 @@
 <script lang="ts" setup>
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useUserStore } from '@/store/user';
 import { message } from 'ant-design-vue';
-import { login } from '@/api/auth';
 import type { LoginRequest } from '@/types/auth';
 
+interface LoginFormState extends LoginRequest {
+  remember: boolean;
+}
+
 const router = useRouter();
+const userStore = useUserStore();
 const loading = ref(false);
-const loginForm = reactive<LoginRequest>({
+
+const loginForm = reactive<LoginFormState>({
   username: '',
-  password: ''
+  password: '',
+  remember: true
 });
 
 const rules = {
@@ -57,41 +69,17 @@ const rules = {
   ]
 };
 
-const handleSubmit = async (values: LoginRequest) => {
+const handleSubmit = async () => {
+  loading.value = true;
   try {
-    loading.value = true;
-    const response = await login(values);
+    const success = await userStore.login({
+      username: loginForm.username,
+      password: loginForm.password
+    }, loginForm.remember);
     
-    if (response.success && response.data) {
-      // 存储用户token和角色信息
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('userRole', response.data.user.role);
-      
-      // 存储用户姓名，优先使用full_name，如果没有则使用username
-      const displayName = response.data.user.full_name || response.data.user.username;
-      localStorage.setItem('userName', displayName);
-      
+    if (success) {
       message.success('登录成功');
-      
-      // 根据用户角色跳转到对应仪表盘
-      switch (response.data.user.role) {
-        case 'patient':
-          router.push('/patient');
-          break;
-        case 'doctor':
-          router.push('/doctor');
-          break;
-        case 'researcher':
-          router.push('/researcher');
-          break;
-        case 'admin':
-          router.push('/admin');
-          break;
-        default:
-          router.push('/profile');
-      }
-    } else {
-      message.error(response.message || '登录失败');
+      // 登录成功后的路由跳转已在store中处理
     }
   } catch (error) {
     console.error('登录失败:', error);
@@ -99,6 +87,15 @@ const handleSubmit = async (values: LoginRequest) => {
   } finally {
     loading.value = false;
   }
+};
+
+const onFinishFailed = (errorInfo: any) => {
+  console.log('Failed:', errorInfo);
+  message.error('表单验证失败，请检查输入');
+};
+
+const toRegister = () => {
+  router.push('/auth/register');
 };
 </script>
 

@@ -104,11 +104,27 @@
       
       <a-layout-content style="margin: 16px">
         <a-breadcrumb style="margin: 16px 0">
-          <a-breadcrumb-item>首页</a-breadcrumb-item>
-          <a-breadcrumb-item>{{ currentPageTitle }}</a-breadcrumb-item>
+          <a-breadcrumb-item>
+            <router-link to="/patient">首页</router-link>
+          </a-breadcrumb-item>
+          
+          <a-breadcrumb-item v-if="route.path !== '/patient'">
+            <span v-if="route.path.includes('/record/') || route.path.includes('/edit-record/')">
+              <router-link to="/patient/records">健康记录</router-link>
+            </span>
+            <span v-else>{{ currentPageTitle }}</span>
+          </a-breadcrumb-item>
+          
+          <a-breadcrumb-item v-if="route.path.includes('/record/') || route.path.includes('/edit-record/')">
+            {{ route.path.includes('/edit-record/') ? '编辑记录' : '记录详情' }}
+          </a-breadcrumb-item>
         </a-breadcrumb>
         <div style="padding: 24px; background: #fff; min-height: 360px">
-          <component :is="currentView" />
+          <router-view v-slot="{ Component }">
+            <transition name="fade" mode="out-in">
+              <component :is="Component" />
+            </transition>
+          </router-view>
         </div>
       </a-layout-content>
       
@@ -170,8 +186,8 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, markRaw, defineAsyncComponent, onMounted, watchEffect } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, onMounted, watchEffect, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { message } from 'ant-design-vue';
 import dayjs from 'dayjs';
 import { 
@@ -196,44 +212,15 @@ import {
   CheckOutlined,
   DeleteOutlined
 } from '@ant-design/icons-vue';
-import { logout } from '@/api/auth';
 import { getNotifications, getNotificationCount, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification as deleteNotificationApi } from '@/api/notifications';
 import type { Notification } from '@/types/notifications';
-
-// 默认页面组件 - 健康概览
-const DashboardContent = defineAsyncComponent(() => 
-  import('@/components/patient/DashboardContent.vue')
-);
-
-// 懒加载其他页面组件
-const RecordsContent = defineAsyncComponent(() => 
-  import('@/components/patient/RecordsContent.vue')
-);
-const AddRecordContent = defineAsyncComponent(() => 
-  import('@/components/patient/AddRecordContent.vue')
-);
-const SharedRecordsContent = defineAsyncComponent(() => 
-  import('@/components/patient/SharedRecordsContent.vue')
-);
-const PirQueryContent = defineAsyncComponent(() => 
-  import('@/components/patient/PirQueryContent.vue')
-);
-const StatisticsContent = defineAsyncComponent(() => 
-  import('@/components/patient/StatisticsContent.vue')
-);
-const PirSettingsContent = defineAsyncComponent(() => 
-  import('@/components/patient/PirSettingsContent.vue')
-);
-const PirHistoryContent = defineAsyncComponent(() => 
-  import('@/components/patient/PirHistoryContent.vue')
-);
-const ProfileContent = defineAsyncComponent(() => 
-  import('@/views/auth/Profile.vue')
-);
+import { useUserStore } from '@/store/user';
 
 const router = useRouter();
+const route = useRoute();
 const collapsed = ref<boolean>(false);
 const selectedKeys = ref<string[]>(['dashboard']);
+const userStore = useUserStore();
 const userName = ref<string>(localStorage.getItem('userName') || '患者用户');
 
 // 通知相关
@@ -242,74 +229,81 @@ const loadingNotifications = ref<boolean>(false);
 const notifications = ref<Notification[]>([]);
 const unreadNotifications = ref<number>(0);
 
-// 当前显示的组件
-const currentView = ref(markRaw(DashboardContent));
-
-// 页面标题映射
-const pageTitles: Record<string, string> = {
-  dashboard: '健康概览',
-  records: '健康记录',
-  'add-record': '添加记录',
-  shared: '共享记录',
-  'pir-query': '隐私查询',
-  statistics: '健康统计',
-  'pir-settings': '隐私设置',
-  'pir-history': '查询历史',
-  profile: '个人设置'
-};
-
 // 计算当前页面标题
 const currentPageTitle = computed(() => {
-  return pageTitles[selectedKeys.value[0]] || '健康概览';
+  // 从路由元数据中获取标题
+  if (route.meta.title) {
+    return route.meta.title as string;
+  }
+  
+  // 后备方案：根据路径判断标题
+  const path = route.path;
+  
+  if (path === '/patient') {
+    return '健康概览';
+  } else if (path.includes('/patient/records')) {
+    return '健康记录';
+  } else if (path.includes('/patient/add-record')) {
+    return '添加记录';
+  } else if (path.includes('/patient/edit-record')) {
+    return '编辑记录';
+  } else if (path.includes('/patient/record')) {
+    return '记录详情';
+  } else if (path.includes('/patient/shared')) {
+    return '共享记录';
+  } else if (path.includes('/patient/pir-query')) {
+    return '隐私查询';
+  } else if (path.includes('/patient/statistics')) {
+    return '健康统计';
+  } else if (path.includes('/patient/pir-settings')) {
+    return '隐私设置';
+  } else if (path.includes('/patient/pir-history')) {
+    return '查询历史';
+  } else if (path.includes('/patient/profile')) {
+    return '个人资料';
+  }
+  
+  return '健康概览';
 });
 
 // 处理菜单选择
 const handleMenuSelect = ({ key }: { key: string }) => {
   selectedKeys.value = [key];
+  
   switch (key) {
     case 'dashboard':
-      currentView.value = markRaw(DashboardContent);
+      router.push('/patient');
       break;
     case 'records':
-      currentView.value = markRaw(RecordsContent);
+      router.push('/patient/records');
       break;
     case 'add-record':
-      currentView.value = markRaw(AddRecordContent);
+      router.push('/patient/add-record');
       break;
     case 'shared':
-      currentView.value = markRaw(SharedRecordsContent);
+      router.push('/patient/shared');
       break;
     case 'pir-query':
-      currentView.value = markRaw(PirQueryContent);
+      router.push('/patient/pir-query');
       break;
     case 'statistics':
-      currentView.value = markRaw(StatisticsContent);
+      router.push('/patient/statistics');
       break;
     case 'pir-settings':
-      currentView.value = markRaw(PirSettingsContent);
+      router.push('/patient/pir-settings');
       break;
     case 'pir-history':
-      currentView.value = markRaw(PirHistoryContent);
+      router.push('/patient/pir-history');
       break;
     case 'profile':
-      currentView.value = markRaw(ProfileContent);
+      router.push('/patient/profile');
       break;
   }
 };
 
-// 处理登出
-const handleLogout = async () => {
-  try {
-    await logout();
-    localStorage.removeItem('token');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('userName');
-    message.success('已成功退出登录');
-    router.push('/au/login');
-  } catch (error) {
-    console.error('退出登录失败:', error);
-    message.error('退出登录失败，请重试');
-  }
+// 处理退出登录
+const handleLogout = () => {
+  userStore.logout();
 };
 
 // 格式化日期
@@ -390,10 +384,46 @@ const deleteNotification = async (id: string) => {
   }
 };
 
-// 组件挂载时获取通知
+// 设置初始选中菜单项
+const setInitialSelectedKey = () => {
+  const path = route.path;
+  
+  // 根据当前路径设置选中的菜单项
+  if (path === '/patient') {
+    selectedKeys.value = ['dashboard'];
+  } else if (path.includes('/patient/records')) {
+    selectedKeys.value = ['records'];
+  } else if (path.includes('/patient/add-record')) {
+    selectedKeys.value = ['add-record'];
+  } else if (path.includes('/patient/edit-record')) {
+    selectedKeys.value = ['records']; // 编辑记录时，保持"健康记录"选中
+  } else if (path.includes('/patient/record')) {
+    selectedKeys.value = ['records']; // 查看记录详情时，保持"健康记录"选中
+  } else if (path.includes('/patient/shared')) {
+    selectedKeys.value = ['shared'];
+  } else if (path.includes('/patient/pir-query')) {
+    selectedKeys.value = ['pir-query'];
+  } else if (path.includes('/patient/statistics')) {
+    selectedKeys.value = ['statistics'];
+  } else if (path.includes('/patient/pir-settings')) {
+    selectedKeys.value = ['pir-settings'];
+  } else if (path.includes('/patient/pir-history')) {
+    selectedKeys.value = ['pir-history'];
+  } else if (path.includes('/patient/profile')) {
+    selectedKeys.value = ['profile'];
+  }
+};
+
+// 监听路由变化，更新选中的菜单项
+watch(() => route.path, () => {
+  setInitialSelectedKey();
+});
+
+// 组件挂载时获取通知和设置初始选中菜单项
 onMounted(() => {
   fetchNotifications();
   fetchNotificationCount();
+  setInitialSelectedKey();
   
   // 设置定时获取未读通知数量
   const timer = setInterval(fetchNotificationCount, 60000); // 每分钟更新一次
@@ -427,5 +457,16 @@ onMounted(() => {
 
 .trigger:hover {
   color: #1890ff;
+}
+
+/* 添加过渡动画样式 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style> 
