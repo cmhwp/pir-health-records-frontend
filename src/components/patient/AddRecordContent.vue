@@ -7,14 +7,13 @@
     
     <a-form
       :model="formState"
-      :rules="rules"
       layout="vertical"
       ref="formRef"
     >
       <a-row :gutter="16">
         <a-col :span="16">
           <a-card title="基本信息">
-            <a-form-item name="title" label="记录标题" required>
+            <a-form-item name="record_data.title" label="记录标题">
               <a-input
                 v-model:value="formState.record_data.title"
                 placeholder="请输入记录标题"
@@ -23,7 +22,7 @@
               />
             </a-form-item>
             
-            <a-form-item name="record_type" label="记录类型" required>
+            <a-form-item name="record_data.record_type" label="记录类型">
               <a-select
                 v-model:value="formState.record_data.record_type"
                 placeholder="请选择记录类型"
@@ -38,7 +37,7 @@
             
             <a-row :gutter="16">
               <a-col :span="12">
-                <a-form-item name="record_date" label="记录日期" required>
+                <a-form-item name="record_data.record_date" label="记录日期">
                   <a-date-picker
                     v-model:value="recordDate"
                     style="width: 100%"
@@ -108,7 +107,7 @@
           
           <!-- 用药记录特定字段 -->
           <a-card v-if="formState.record_data.record_type === RecordType.MEDICATION" title="用药信息" style="margin-top: 16px">
-            <a-form-item name="medication_name" label="药物名称" required>
+            <a-form-item name="record_data.medication.medication_name" label="药物名称">
               <a-input
                 v-model:value="formState.record_data.medication.medication_name"
                 placeholder="请输入药物名称"
@@ -293,7 +292,7 @@ const formState = reactive<ExtendedCreateRecordRequest>({
     title: '',
     record_type: RecordType.GENERAL,
     description: '',
-    record_date: dayjs().format('YYYY-MM-DD'),
+    record_date: dayjs().format('YYYY-MM-DDTHH:mm:ss.SSS'),
     institution: '',
     doctor_name: '',
     visibility: RecordVisibility.PRIVATE,
@@ -327,21 +326,7 @@ const recordTypeOptions = [
 ];
 
 // 表单验证规则
-const rules = {
-  title: [
-    { required: true, message: '请输入记录标题', trigger: 'blur' },
-    { min: 2, max: 100, message: '标题长度在2-100个字符之间', trigger: 'blur' }
-  ],
-  record_type: [
-    { required: true, message: '请选择记录类型', trigger: 'change' }
-  ],
-  record_date: [
-    { required: true, message: '请选择记录日期', trigger: 'change' }
-  ],
-  medication_name: [
-    { required: true, message: '请输入药物名称', trigger: 'blur' }
-  ]
-};
+const rules = {};
 
 // 文件列表
 const fileList = ref<any[]>([]);
@@ -370,7 +355,7 @@ const disabledEndDate = (current: dayjs.Dayjs) => {
 // 处理日期变化
 const handleDateChange = (value: dayjs.Dayjs | null) => {
   if (value) {
-    formState.record_data.record_date = value.format('YYYY-MM-DD');
+    formState.record_data.record_date = value.format('YYYY-MM-DDTHH:mm:ss.SSS');
   } else {
     formState.record_data.record_date = '';
   }
@@ -379,7 +364,7 @@ const handleDateChange = (value: dayjs.Dayjs | null) => {
 // 处理用药开始日期变化
 const handleMedicationStartDateChange = (value: dayjs.Dayjs | null) => {
   if (value) {
-    formState.record_data.medication.start_date = value.format('YYYY-MM-DD');
+    formState.record_data.medication.start_date = value.format('YYYY-MM-DDTHH:mm:ss.SSS');
   } else {
     formState.record_data.medication.start_date = '';
   }
@@ -388,7 +373,7 @@ const handleMedicationStartDateChange = (value: dayjs.Dayjs | null) => {
 // 处理用药结束日期变化
 const handleMedicationEndDateChange = (value: dayjs.Dayjs | null) => {
   if (value) {
-    formState.record_data.medication.end_date = value.format('YYYY-MM-DD');
+    formState.record_data.medication.end_date = value.format('YYYY-MM-DDTHH:mm:ss.SSS');
   } else {
     formState.record_data.medication.end_date = '';
   }
@@ -463,8 +448,6 @@ const formatFileSize = (size: number): string => {
 // 提交表单
 const handleSubmit = async () => {
   try {
-    await formRef.value?.validate();
-    
     submitting.value = true;
     
     // 准备文件描述
@@ -492,13 +475,8 @@ const handleSubmit = async () => {
       message.error(response.message || '创建记录失败');
     }
   } catch (error) {
-    if (error instanceof Error) {
-      console.error('表单验证失败:', error);
-      message.error('请检查表单填写是否正确');
-    } else {
-      console.error('创建记录失败:', error);
-      message.error('创建记录失败');
-    }
+    console.error('创建记录失败:', error);
+    message.error('创建记录失败');
   } finally {
     submitting.value = false;
   }
@@ -513,7 +491,7 @@ const goBack = () => {
 onMounted(() => {
   // 初始化记录日期为今天
   recordDate.value = dayjs();
-  formState.record_data.record_date = dayjs().format('YYYY-MM-DD');
+  formState.record_data.record_date = dayjs().format('YYYY-MM-DDTHH:mm:ss.SSS');
 });
 </script>
 
