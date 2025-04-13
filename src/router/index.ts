@@ -157,18 +157,6 @@ const routes: Array<RouteRecordRaw> = [
         meta: { requiresAuth: true, role: 'admin', title: '系统日志' }
       },
       {
-        path: 'system-health',
-        name: 'SystemHealth',
-        component: () => import('@/components/admin/SystemHealthContent.vue'),
-        meta: { requiresAuth: true, role: 'admin', title: '系统健康' }
-      },
-      {
-        path: 'system-metrics',
-        name: 'SystemMetrics',
-        component: () => import('@/components/admin/SystemMetricsContent.vue'),
-        meta: { requiresAuth: true, role: 'admin', title: '系统指标' }
-      },
-      {
         path: 'batch-records',
         name: 'BatchRecords',
         component: () => import('@/components/admin/BatchRecordsContent.vue'),
@@ -179,12 +167,6 @@ const routes: Array<RouteRecordRaw> = [
         name: 'ExportData',
         component: () => import('@/components/admin/ExportDataContent.vue'),
         meta: { requiresAuth: true, role: 'admin', title: '导出数据' }
-      },
-      {
-        path: 'maintenance',
-        name: 'Maintenance',
-        component: () => import('@/components/admin/MaintenanceContent.vue'),
-        meta: { requiresAuth: true, role: 'admin', title: '系统维护' }
       },
       {
         path: 'settings',

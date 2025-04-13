@@ -49,7 +49,7 @@ export interface CreateUserRequest {
   full_name?: string;
   phone?: string;
   is_active?: boolean;
-  role: string;
+  role?: string;
   patient_info?: PatientInfo;
   doctor_info?: DoctorInfo;
   researcher_info?: ResearcherInfo;
@@ -96,36 +96,6 @@ export interface SystemLogResponse {
   total: number;
   pages: number;
   current_page: number;
-}
-
-// System health types
-export interface SystemHealthResponse {
-  system: {
-    cpu_usage: number;
-    memory_usage: {
-      total: number;
-      available: number;
-      percent: number;
-    };
-    disk_usage: {
-      total: number;
-      used: number;
-      free: number;
-      percent: number;
-    };
-    uptime: number;
-  };
-  database: {
-    mysql_status: boolean;
-    mongo_status: boolean;
-    record_count: number;
-  };
-  users: {
-    active_users: number;
-    total_users: number;
-    last_login_time?: string;
-  };
-  timestamp: string;
 }
 
 // User activity types
@@ -209,45 +179,6 @@ export interface SystemSettingsResponse {
   raw_settings: Record<string, any>;
 }
 
-// Maintenance request types
-export interface MaintenanceRequest {
-  action: 'clear_cache' | 'vacuum_db' | 'backup';
-}
-
-// System metrics types
-export interface ActivityMetrics {
-  labels: string[];
-  values: number[];
-}
-
-export interface SystemMetricsResponse {
-  metrics: {
-    user?: {
-      query_count: number;
-      active_users: number;
-      activity_data: ActivityMetrics;
-    };
-    system?: {
-      cpu_usage: number;
-      memory_usage: number;
-      system_uptime: number;
-    };
-    database?: {
-      mysql: {
-        table_counts: Record<string, number>;
-        total_rows: number;
-      };
-      mongodb: {
-        storage_size: number;
-        data_size: number;
-        collections: number;
-        objects: number;
-      };
-    };
-  };
-  period: string;
-  timestamp: string;
-}
 
 // Admin dashboard types
 export interface SystemOverview {
@@ -268,14 +199,6 @@ export interface TimelineData {
   count: number;
 }
 
-export interface SystemStatus {
-  maintenance_mode: boolean;
-  error_count_24h: number;
-  needs_backup: boolean;
-  pir_enabled: boolean;
-  pir_query_count: number;
-}
-
 export interface Alert {
   type: 'error' | 'warning' | 'info';
   message: string;
@@ -287,63 +210,118 @@ export interface AdminDashboardResponse {
   user_distribution: Record<string, number>;
   recent_activity: RecentActivity;
   timeline_data: TimelineData[];
-  system_status: SystemStatus;
-  alerts: Alert[];
+  system_status?: {
+    error_count_24h: number;
+    pir_enabled: boolean;
+    pir_query_count: number;
+  };
+  alerts?: Alert[];
 }
 
-// User role-specific list responses
-export interface PatientData extends User {
-  patient_info: PatientInfo;
-  record_count: number;
-  shared_records_count: number;
+/**
+ * 批量任务状态枚举
+ */
+export enum BatchStatus {
+  PENDING = 'pending',      // 待处理
+  PROCESSING = 'processing', // 处理中
+  COMPLETED = 'completed',   // 已完成
+  FAILED = 'failed'          // 失败
 }
 
-export interface PatientResponse {
-  patients: PatientData[];
-  total: number;
-  pages: number;
-  current_page: number;
+/**
+ * 批量任务类型枚举
+ */
+export enum BatchType {
+  PATIENT = 'patient',       // 患者记录
+  MEDICATION = 'medication',  // 药物数据
+  LAB = 'lab',               // 实验室结果
+  CUSTOM = 'custom'          // 自定义数据
 }
 
-export interface DoctorData extends User {
-  doctor_info: DoctorInfo;
-  viewed_records: number;
+/**
+ * 日志级别枚举
+ */
+export enum LogLevel {
+  INFO = 'info',           // 信息
+  WARNING = 'warning',      // 警告
+  ERROR = 'error',          // 错误
+  SUCCESS = 'success'       // 成功
 }
 
-export interface DoctorResponse {
-  doctors: DoctorData[];
-  total: number;
-  pages: number;
-  current_page: number;
-  specialty_options: string[];
+/**
+ * 批量任务信息
+ */
+export interface BatchJob {
+  id: string;               // 批量任务ID
+  name: string;             // 任务名称
+  type: BatchType;          // 任务类型
+  status: BatchStatus;      // 任务状态
+  progress: number;         // 处理进度 (0-100)
+  file_name?: string;       // 原始文件名
+  file_type?: string;       // 文件类型 (CSV, JSON, XML)
+  file_size?: number;       // 文件大小 (字节)
+  records_count?: number;   // 总记录数
+  processed_count?: number; // 已处理记录数
+  error_count: number;      // 错误记录数
+  options?: {               // 处理选项
+    validateOnly?: boolean;  // 仅验证
+    skipDuplicates?: boolean; // 跳过重复
+  };
+  createdBy: string;        // 创建者用户名
+  createdAt: string;        // 创建时间
+  updatedAt: string;        // 更新时间
+  completedAt?: string;     // 完成时间
 }
 
-export interface ResearcherData extends User {
-  researcher_info: ResearcherInfo;
-  query_count: number;
+/**
+ * 批量任务日志
+ */
+export interface BatchJobLog {
+  id: number;               // 日志ID
+  timestamp: string;        // 时间戳
+  level: LogLevel;          // 日志级别
+  message: string;          // 日志消息
+  details?: any;            // 附加详细信息
 }
 
-export interface ResearcherResponse {
-  researchers: ResearcherData[];
-  total: number;
-  pages: number;
-  current_page: number;
-  institution_options: string[];
-  research_area_options: string[];
+/**
+ * 批量任务错误
+ */
+export interface BatchJobError {
+  key: number;              // 错误ID
+  row?: number;             // 错误所在行号
+  field?: string;           // 错误字段
+  value?: string;           // 错误值
+  error: string;            // 错误消息
+  timestamp?: string;       // 时间戳
 }
 
-export interface AdminData extends User {
-  log_count: number;
-  recent_activities: {
-    time: string;
-    action: string;
-  }[];
+/**
+ * 批量任务列表响应
+ */
+export interface BatchJobsResponse {
+  batch_jobs: BatchJob[];
 }
 
-export interface AdminResponse {
-  admins: AdminData[];
-  total: number;
-  pages: number;
-  current_page: number;
-  current_admin: User;
+/**
+ * 批量任务详情响应
+ */
+export interface BatchJobDetailsResponse {
+  batch_job: BatchJob;
+  logs: BatchJobLog[];
+  errors: BatchJobError[];
+}
+
+/**
+ * 批量任务上传响应
+ */
+export interface BatchJobUploadResponse {
+  batch_job: BatchJob;
+}
+
+/**
+ * 批量任务处理响应
+ */
+export interface BatchJobProcessResponse {
+  batch_job: BatchJob;
 } 

@@ -6,19 +6,18 @@ import type {
   CreateUserRequest,
   UpdateUserRequest,
   SystemLogResponse,
-  SystemHealthResponse,
   UserActivityResponse,
   BatchManageRecordsRequest,
   ExportDataRequest,
   ExportDataResponse,
   SystemSettingsResponse,
-  MaintenanceRequest,
-  SystemMetricsResponse,
   AdminDashboardResponse,
-  PatientResponse,
-  DoctorResponse,
-  ResearcherResponse,
-  AdminResponse
+  // 批量任务相关类型
+  BatchJobsResponse,
+  BatchJobDetailsResponse,
+  BatchJobUploadResponse,
+  BatchJobProcessResponse,
+  BatchStatus
 } from '@/types/admin';
 import type { ApiResponse } from '@/types/auth';
 
@@ -35,10 +34,10 @@ export const getUsers = (
 };
 
 /**
- * 获取单个用户详情
+ * 获取用户详情
  */
-export const getUser = (userId: number): Promise<ApiResponse<UserResponse>> => {
-  return request.get(`/admin/users/${userId}`);
+export const getUser = (user_id: number): Promise<ApiResponse<UserResponse>> => {
+  return request.get(`/admin/users/${user_id}`);
 };
 
 /**
@@ -84,13 +83,6 @@ export const getSystemLogs = (
   if (start_date) url += `&start_date=${start_date}`;
   if (end_date) url += `&end_date=${end_date}`;
   return request.get(url);
-};
-
-/**
- * 获取系统健康状态
- */
-export const getSystemHealth = (): Promise<ApiResponse<SystemHealthResponse>> => {
-  return request.get('/admin/system/health');
 };
 
 /**
@@ -147,25 +139,6 @@ export const updateSystemSettings = (
 };
 
 /**
- * 系统维护操作
- */
-export const performMaintenance = (
-  data: MaintenanceRequest
-): Promise<ApiResponse<{ message: string, backup_file?: string }>> => {
-  return request.post('/admin/maintenance', data);
-};
-
-/**
- * 获取系统性能指标
- */
-export const getSystemMetrics = (
-  type: string = 'all', 
-  period: string = '24h'
-): Promise<ApiResponse<SystemMetricsResponse>> => {
-  return request.get(`/admin/metrics?type=${type}&period=${period}`);
-};
-
-/**
  * 获取管理员仪表盘数据
  */
 export const getAdminDashboard = (): Promise<ApiResponse<AdminDashboardResponse>> => {
@@ -173,53 +146,60 @@ export const getAdminDashboard = (): Promise<ApiResponse<AdminDashboardResponse>
 };
 
 /**
- * 获取患者列表
+ * 获取批量任务列表
  */
-export const getPatients = (
-  page: number = 1, 
-  per_page: number = 20, 
-  search: string = ''
-): Promise<ApiResponse<PatientResponse>> => {
-  return request.get(`/admin/users/patients?page=${page}&per_page=${per_page}&search=${encodeURIComponent(search)}`);
+export const getBatchJobs = (
+  status?: string
+): Promise<ApiResponse<BatchJobsResponse>> => {
+  const params = status ? { status } : {};
+  return request.get('/admin/batch-records', { params });
 };
 
 /**
- * 获取医生列表
+ * 获取批量任务详情
  */
-export const getDoctors = (
-  page: number = 1, 
-  per_page: number = 20, 
-  search: string = '', 
-  specialty: string = ''
-): Promise<ApiResponse<DoctorResponse>> => {
-  let url = `/admin/users/doctors?page=${page}&per_page=${per_page}&search=${encodeURIComponent(search)}`;
-  if (specialty) url += `&specialty=${encodeURIComponent(specialty)}`;
-  return request.get(url);
+export const getBatchJobDetails = (
+  jobId: string
+): Promise<ApiResponse<BatchJobDetailsResponse>> => {
+  return request.get(`/admin/batch-records/${jobId}`);
 };
 
 /**
- * 获取研究人员列表
+ * 上传批量数据文件
  */
-export const getResearchers = (
-  page: number = 1, 
-  per_page: number = 20, 
-  search: string = '', 
-  institution: string = '', 
-  research_area: string = ''
-): Promise<ApiResponse<ResearcherResponse>> => {
-  let url = `/admin/users/researchers?page=${page}&per_page=${per_page}&search=${encodeURIComponent(search)}`;
-  if (institution) url += `&institution=${encodeURIComponent(institution)}`;
-  if (research_area) url += `&research_area=${encodeURIComponent(research_area)}`;
-  return request.get(url);
+export const uploadBatchFile = (
+  formData: FormData
+): Promise<ApiResponse<BatchJobUploadResponse>> => {
+  return request.post('/admin/batch-records/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
 };
 
 /**
- * 获取管理员列表
+ * 开始处理批量任务
  */
-export const getAdmins = (
-  page: number = 1, 
-  per_page: number = 20, 
-  search: string = ''
-): Promise<ApiResponse<AdminResponse>> => {
-  return request.get(`/admin/users/admins?page=${page}&per_page=${per_page}&search=${encodeURIComponent(search)}`);
+export const startBatchProcessing = (
+  jobId: string
+): Promise<ApiResponse<BatchJobProcessResponse>> => {
+  return request.post(`/admin/batch-records/${jobId}/start`);
+};
+
+/**
+ * 删除批量任务
+ */
+export const deleteBatchJob = (
+  jobId: string
+): Promise<ApiResponse<{ message: string }>> => {
+  return request.delete(`/admin/batch-records/${jobId}`);
+};
+
+/**
+ * 获取批量任务结果下载URL
+ */
+export const getBatchResultsDownloadUrl = (
+  jobId: string
+): string => {
+  return `${request.defaults.baseURL}/admin/batch-records/${jobId}/download`;
 }; 

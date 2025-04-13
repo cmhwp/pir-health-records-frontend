@@ -8,10 +8,10 @@
       
       <div class="action-bar">
         <a-radio-group v-model:value="currentView" button-style="solid">
-          <a-radio-button value="pending">待处理</a-radio-button>
-          <a-radio-button value="processing">处理中</a-radio-button>
-          <a-radio-button value="completed">已完成</a-radio-button>
-          <a-radio-button value="failed">失败</a-radio-button>
+          <a-radio-button :value="BatchStatus.PENDING">待处理</a-radio-button>
+          <a-radio-button :value="BatchStatus.PROCESSING">处理中</a-radio-button>
+          <a-radio-button :value="BatchStatus.COMPLETED">已完成</a-radio-button>
+          <a-radio-button :value="BatchStatus.FAILED">失败</a-radio-button>
         </a-radio-group>
         
         <div class="right-actions">
@@ -52,7 +52,7 @@
               </a-button>
               <a-button 
                 size="small" 
-                v-if="record.status === 'pending'"
+                v-if="record.status === BatchStatus.PENDING"
                 type="primary"
                 @click="startProcessing(record)"
               >
@@ -61,14 +61,14 @@
               <a-button
                 size="small"
                 type="danger"
-                v-if="record.status === 'pending' || record.status === 'failed'"
+                v-if="record.status === BatchStatus.PENDING || record.status === BatchStatus.FAILED"
                 @click="deleteBatch(record)"
               >
                 <delete-outlined /> 删除
               </a-button>
               <a-button
                 size="small"
-                v-if="record.status === 'completed'"
+                v-if="record.status === BatchStatus.COMPLETED"
                 @click="downloadResults(record)"
               >
                 <download-outlined /> 下载
@@ -152,8 +152,8 @@
         <a-descriptions-item label="创建者">{{ selectedBatch.createdBy }}</a-descriptions-item>
         <a-descriptions-item label="创建时间">{{ formatDate(selectedBatch.createdAt) }}</a-descriptions-item>
         <a-descriptions-item label="更新时间">{{ formatDate(selectedBatch.updatedAt) }}</a-descriptions-item>
-        <a-descriptions-item label="记录数量">{{ selectedBatch.recordsCount || '未知' }}</a-descriptions-item>
-        <a-descriptions-item label="错误数量">{{ selectedBatch.errorCount || 0 }}</a-descriptions-item>
+        <a-descriptions-item label="记录数量">{{ selectedBatch.records_count || '未知' }}</a-descriptions-item>
+        <a-descriptions-item label="错误数量">{{ selectedBatch.error_count || 0 }}</a-descriptions-item>
       </a-descriptions>
 
       <a-tabs v-if="selectedBatch">
@@ -167,7 +167,7 @@
           <a-empty v-else description="暂无可用日志" />
         </a-tab-pane>
         
-        <a-tab-pane key="errors" tab="错误" v-if="selectedBatch.errorCount > 0">
+        <a-tab-pane key="errors" tab="错误" v-if="selectedBatch.error_count > 0">
           <a-table :dataSource="batchErrors" :columns="errorColumns" :pagination="{ pageSize: 5 }" />
         </a-tab-pane>
       </a-tabs>
@@ -176,7 +176,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, watch } from 'vue';
 import { message, Modal } from 'ant-design-vue';
 import { 
   UploadOutlined, 
@@ -189,34 +189,24 @@ import {
 } from '@ant-design/icons-vue';
 import dayjs from 'dayjs';
 import { Upload } from 'ant-design-vue';
-
-interface BatchJob {
-  id: string;
-  name: string;
-  type: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  progress: number;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-  recordsCount: number | null;
-  errorCount: number;
-}
-
-interface BatchLog {
-  id: number;
-  timestamp: string;
-  level: 'info' | 'warning' | 'error' | 'success';
-  message: string;
-}
-
-interface BatchError {
-  key: number;
-  row: number;
-  field: string;
-  value: string;
-  error: string;
-}
+import { 
+  getBatchJobs, 
+  getBatchJobDetails, 
+  uploadBatchFile, 
+  startBatchProcessing, 
+  deleteBatchJob, 
+  getBatchResultsDownloadUrl 
+} from '@/api/admin';
+import { 
+  BatchStatus, 
+  BatchType, 
+  LogLevel 
+} from '@/types/admin';
+import type { 
+  BatchJob, 
+  BatchJobLog, 
+  BatchJobError
+} from '@/types/admin';
 
 interface UploadForm {
   name: string;
@@ -228,14 +218,14 @@ interface UploadForm {
 
 // 状态变量
 const loading = ref<boolean>(false);
-const currentView = ref<string>('pending');
+const currentView = ref<BatchStatus>(BatchStatus.PENDING);
 const batchJobs = ref<BatchJob[]>([]);
 const uploadModalVisible = ref<boolean>(false);
 const uploading = ref<boolean>(false);
 const detailsModalVisible = ref<boolean>(false);
 const selectedBatch = ref<BatchJob | null>(null);
-const batchLogs = ref<BatchLog[]>([]);
-const batchErrors = ref<BatchError[]>([]);
+const batchLogs = ref<BatchJobLog[]>([]);
+const batchErrors = ref<BatchJobError[]>([]);
 
 // 表单数据
 const uploadForm = reactive<UploadForm>({
@@ -314,62 +304,12 @@ const errorColumns = [
 const loadBatchJobs = async () => {
   loading.value = true;
   try {
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // 模拟数据
-    const allJobs: BatchJob[] = [
-      {
-        id: 'BATCH-001',
-        name: '一月份患者导入',
-        type: 'patient',
-        status: 'completed',
-        progress: 100,
-        createdBy: 'admin@example.com',
-        createdAt: '2023-05-15T09:30:00',
-        updatedAt: '2023-05-15T09:45:00',
-        recordsCount: 1250,
-        errorCount: 0
-      },
-      {
-        id: 'BATCH-002',
-        name: '药物数据更新',
-        type: 'medication',
-        status: 'processing',
-        progress: 45,
-        createdBy: 'admin@example.com',
-        createdAt: '2023-05-16T14:20:00',
-        updatedAt: '2023-05-16T14:30:00',
-        recordsCount: 3500,
-        errorCount: 12
-      },
-      {
-        id: 'BATCH-003',
-        name: '实验室结果导入',
-        type: 'lab',
-        status: 'failed',
-        progress: 23,
-        createdBy: 'admin@example.com',
-        createdAt: '2023-05-17T10:15:00',
-        updatedAt: '2023-05-17T10:25:00',
-        recordsCount: 500,
-        errorCount: 78
-      },
-      {
-        id: 'BATCH-004',
-        name: '新患者数据导入',
-        type: 'patient',
-        status: 'pending',
-        progress: 0,
-        createdBy: 'admin@example.com',
-        createdAt: '2023-05-18T08:45:00',
-        updatedAt: '2023-05-18T08:45:00',
-        recordsCount: null,
-        errorCount: 0
-      }
-    ];
-    
-    batchJobs.value = allJobs.filter(job => job.status === currentView.value);
+    const response = await getBatchJobs(currentView.value);
+    if (response.success && response.data) {
+      batchJobs.value = response.data.batch_jobs;
+    } else {
+      message.error(response.message || '加载批量任务数据失败');
+    }
   } catch (error) {
     console.error('加载批量任务数据失败:', error);
     message.error('加载批量任务数据失败');
@@ -385,40 +325,15 @@ const loadBatchDetails = async (batch: BatchJob) => {
   batchErrors.value = [];
   
   try {
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 800));
+    const response = await getBatchJobDetails(batch.id);
     
-    // 模拟日志数据
-    batchLogs.value = [
-      {
-        id: 1, 
-        timestamp: new Date().toISOString(),
-        level: 'info',
-        message: '开始处理批量任务: ' + batch.name
-      },
-      {
-        id: 2, 
-        timestamp: new Date(Date.now() - 5 * 60000).toISOString(),
-        level: 'info',
-        message: '验证输入文件格式'
-      },
-      {
-        id: 3, 
-        timestamp: new Date(Date.now() - 4 * 60000).toISOString(),
-        level: 'info',
-        message: '处理记录中...'
-      }
-    ];
-    
-    // 模拟错误数据
-    if (batch.errorCount > 0) {
-      batchErrors.value = Array(Math.min(batch.errorCount, 20)).fill(0).map((_, i) => ({
-        key: i,
-        row: Math.floor(Math.random() * 1000) + 1,
-        field: ['name', 'dob', 'address', 'phone', 'id'][Math.floor(Math.random() * 5)],
-        value: '无效值示例',
-        error: '验证失败: 不符合所需格式'
-      }));
+    if (response.success && response.data) {
+      // 更新批量任务信息（获取最新状态）
+      selectedBatch.value = response.data.batch_job;
+      batchLogs.value = response.data.logs;
+      batchErrors.value = response.data.errors;
+    } else {
+      message.error(response.message || '加载批量详情失败');
     }
   } catch (error) {
     console.error('加载批量详情失败:', error);
@@ -479,13 +394,25 @@ const handleUpload = async () => {
   uploading.value = true;
   
   try {
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // 构建上传表单数据
+    const formData = new FormData();
+    formData.append('name', uploadForm.name);
+    formData.append('type', uploadForm.type);
+    formData.append('validateOnly', uploadForm.validateOnly.toString());
+    formData.append('skipDuplicates', uploadForm.skipDuplicates.toString());
+    formData.append('file', uploadForm.fileList[0].originFileObj);
     
-    message.success('批量数据上传成功');
-    uploadModalVisible.value = false;
-    currentView.value = 'pending'; // 切换到待处理视图
-    refreshData();
+    // 调用上传API
+    const response = await uploadBatchFile(formData);
+    
+    if (response.success) {
+      message.success('批量数据上传成功');
+      uploadModalVisible.value = false;
+      currentView.value = BatchStatus.PENDING; // 切换到待处理视图
+      refreshData();
+    } else {
+      message.error(response.message || '批量数据上传失败');
+    }
   } catch (error) {
     console.error('批量数据上传失败:', error);
     message.error('批量数据上传失败');
@@ -510,11 +437,15 @@ const startProcessing = (record: BatchJob) => {
     onOk: async () => {
       loading.value = true;
       try {
-        // 模拟API调用
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        message.success(`批量任务${record.name}开始处理`);
-        currentView.value = 'processing'; // 切换到处理中视图
-        refreshData();
+        const response = await startBatchProcessing(record.id);
+        
+        if (response.success) {
+          message.success(`批量任务${record.name}开始处理`);
+          currentView.value = BatchStatus.PROCESSING; // 切换到处理中视图
+          refreshData();
+        } else {
+          message.error(response.message || '开始处理失败');
+        }
       } catch (error) {
         console.error('开始处理失败:', error);
         message.error('开始处理失败');
@@ -536,10 +467,14 @@ const deleteBatch = (record: BatchJob) => {
     onOk: async () => {
       loading.value = true;
       try {
-        // 模拟API调用
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        message.success(`批量任务${record.name}已成功删除`);
-        refreshData();
+        const response = await deleteBatchJob(record.id);
+        
+        if (response.success) {
+          message.success(`批量任务${record.name}已成功删除`);
+          refreshData();
+        } else {
+          message.error(response.message || '删除批量任务失败');
+        }
       } catch (error) {
         console.error('删除批量任务失败:', error);
         message.error('删除批量任务失败');
@@ -552,71 +487,81 @@ const deleteBatch = (record: BatchJob) => {
 
 // 下载结果
 const downloadResults = (record: BatchJob) => {
+  const downloadUrl = getBatchResultsDownloadUrl(record.id);
+  
+  // 创建一个临时链接并点击它来触发下载
+  const a = document.createElement('a');
+  a.style.display = 'none';
+  a.href = downloadUrl;
+  a.target = '_blank';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  
   message.success(`正在下载${record.name}的结果`);
-  // 在实际应用中，这将触发文件下载
 };
 
 // 获取状态颜色
-const getStatusColor = (status: string) => {
-  const colors: Record<string, string> = {
+const getStatusColor = (status: string): string => {
+  const colorMap: Record<string, string> = {
     'pending': 'blue',
     'processing': 'processing',
     'completed': 'success',
     'failed': 'error'
   };
-  return colors[status] || 'default';
+  return colorMap[status] || 'default';
 };
 
 // 获取状态文本
-const getStatusText = (status: string) => {
-  const texts: Record<string, string> = {
+const getStatusText = (status: string): string => {
+  const textMap: Record<string, string> = {
     'pending': '待处理',
     'processing': '处理中',
     'completed': '已完成',
     'failed': '失败'
   };
-  return texts[status] || status;
+  return textMap[status] || status;
 };
 
 // 获取批量类型文本
-const getBatchTypeText = (type: string) => {
-  const texts: Record<string, string> = {
+const getBatchTypeText = (type: string): string => {
+  const textMap: Record<string, string> = {
     'patient': '患者记录',
     'medication': '药物数据',
     'lab': '实验室结果',
     'custom': '自定义数据'
   };
-  return texts[type] || type;
+  return textMap[type] || type;
 };
 
 // 获取进度状态
-const getProgressStatus = (status: string) => {
-  if (status === 'completed') return 'success';
-  if (status === 'failed') return 'exception';
-  if (status === 'processing') return 'active';
+const getProgressStatus = (status: string): 'success' | 'exception' | 'active' | 'normal' => {
+  if (status === BatchStatus.COMPLETED) return 'success';
+  if (status === BatchStatus.FAILED) return 'exception';
+  if (status === BatchStatus.PROCESSING) return 'active';
   return 'normal';
 };
 
 // 获取日志颜色
-const getLogColor = (level: string) => {
-  const colors: Record<string, string> = {
+const getLogColor = (level: string): string => {
+  const colorMap: Record<string, string> = {
     'info': 'blue',
     'warning': 'orange',
     'error': 'red',
     'success': 'green'
   };
-  return colors[level] || 'blue';
+  return colorMap[level] || 'blue';
 };
 
 // 获取空状态文本
-const getEmptyText = () => {
-  const texts: Record<string, string> = {
+const getEmptyText = (): string => {
+  const textMap: Record<string, string> = {
     'pending': '暂无待处理的批量任务',
     'processing': '暂无处理中的批量任务',
     'completed': '暂无已完成的批量任务',
     'failed': '暂无失败的批量任务'
   };
-  return texts[currentView.value] || '暂无数据';
+  return textMap[currentView.value] || '暂无数据';
 };
 
 // 格式化日期
@@ -624,6 +569,11 @@ const formatDate = (dateString?: string) => {
   if (!dateString) return '未知';
   return dayjs(dateString).format('YYYY-MM-DD HH:mm:ss');
 };
+
+// 监听视图变化自动刷新数据
+watch(currentView, () => {
+  loadBatchJobs();
+});
 
 // 组件挂载时加载数据
 onMounted(() => {

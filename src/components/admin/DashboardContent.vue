@@ -58,29 +58,6 @@
 
       <a-divider />
 
-      <!-- 系统警报 -->
-      <a-row :gutter="16" style="margin-bottom: 16px" v-if="dashboardData?.alerts?.length">
-        <a-col :span="24">
-          <a-card title="系统警报" class="alert-card">
-            <template #extra>
-              <a-button type="primary" size="small" @click="refreshDashboard">刷新</a-button>
-            </template>
-            <a-list size="small" :data-source="dashboardData?.alerts || []">
-              <template #renderItem="{ item }">
-                <a-list-item>
-                  <a-alert
-                    :message="item.message"
-                    :description="item.details"
-                    :type="getAlertType(item.type)"
-                    show-icon
-                  />
-                </a-list-item>
-              </template>
-            </a-list>
-          </a-card>
-        </a-col>
-      </a-row>
-
       <a-row :gutter="16">
         <!-- 用户分布 -->
         <a-col :span="12">
@@ -104,42 +81,111 @@
       </a-row>
 
       <a-divider />
-
-      <a-row :gutter="16">
-        <!-- 系统状态 -->
-        <a-col :span="8">
-          <a-card title="系统状态" :loading="loading">
+      
+      <!-- 系统警报 -->
+      <a-row :gutter="16" v-if="dashboardData?.alerts && dashboardData.alerts.length > 0">
+        <a-col :span="24">
+          <a-card title="系统警报" :bordered="false" class="alert-card">
             <template #extra>
-              <a-button type="link" @click="router.push('/admin/system-health')">详情</a-button>
+              <a-button type="primary" size="small" @click="refreshDashboard">刷新</a-button>
             </template>
-            <a-descriptions :column="1" size="small">
-              <a-descriptions-item label="维护模式">
-                <a-tag :color="dashboardData?.system_status?.maintenance_mode ? 'orange' : 'green'">
-                  {{ dashboardData?.system_status?.maintenance_mode ? '已启用' : '未启用' }}
-                </a-tag>
-              </a-descriptions-item>
-              <a-descriptions-item label="错误数量(24h)">
-                {{ dashboardData?.system_status?.error_count_24h || 0 }}
-              </a-descriptions-item>
-              <a-descriptions-item label="PIR功能">
-                <a-tag :color="dashboardData?.system_status?.pir_enabled ? 'blue' : 'gray'">
-                  {{ dashboardData?.system_status?.pir_enabled ? '已启用' : '未启用' }}
-                </a-tag>
-              </a-descriptions-item>
-              <a-descriptions-item label="PIR查询数">
-                {{ dashboardData?.system_status?.pir_query_count || 0 }}
-              </a-descriptions-item>
-              <a-descriptions-item label="需要备份">
-                <a-tag :color="dashboardData?.system_status?.needs_backup ? 'red' : 'green'">
-                  {{ dashboardData?.system_status?.needs_backup ? '是' : '否' }}
-                </a-tag>
-              </a-descriptions-item>
-            </a-descriptions>
+            <a-list size="small" :data-source="dashboardData.alerts">
+              <template #renderItem="{ item }">
+                <a-list-item>
+                  <a-alert
+                    :message="item.message"
+                    :description="item.details"
+                    :type="getAlertType(item.type)"
+                    show-icon
+                  />
+                </a-list-item>
+              </template>
+            </a-list>
           </a-card>
         </a-col>
+      </a-row>
 
+      <a-divider />
+      
+      <!-- 系统状态信息 -->
+      <a-row :gutter="16" v-if="dashboardData?.system_status">
+        <a-col :span="8">
+          <a-card title="PIR 功能状态">
+            <a-statistic
+              title="PIR 隐私保护"
+              :value="dashboardData.system_status.pir_enabled ? '已启用' : '未启用'"
+              :value-style="{ color: dashboardData.system_status.pir_enabled ? '#52c41a' : '#ff4d4f' }"
+            >
+              <template #prefix>
+                <safety-outlined />
+              </template>
+            </a-statistic>
+            <a-divider style="margin: 16px 0" />
+            <a-statistic
+              title="PIR 查询数"
+              :value="dashboardData.system_status.pir_query_count || 0"
+              :value-style="{ color: '#1890ff' }"
+            >
+              <template #prefix>
+                <search-outlined />
+              </template>
+            </a-statistic>
+          </a-card>
+        </a-col>
+        
+        <a-col :span="8">
+          <a-card title="系统性能">
+            <a-statistic
+              title="24小时错误数"
+              :value="dashboardData.system_status.error_count_24h || 0"
+              :value-style="{ 
+                color: dashboardData.system_status.error_count_24h > 10 ? '#ff4d4f' : 
+                       dashboardData.system_status.error_count_24h > 0 ? '#faad14' : '#52c41a' 
+              }"
+            >
+              <template #prefix>
+                <warning-outlined />
+              </template>
+            </a-statistic>
+            <a-divider style="margin: 16px 0" />
+            <a-button 
+              type="primary" 
+              block 
+              @click="router.push('/admin/system-logs')">
+              查看系统日志
+            </a-button>
+          </a-card>
+        </a-col>
+        
+        <a-col :span="8">
+          <a-card title="快速操作">
+            <a-space direction="vertical" style="width: 100%">
+              <a-button 
+                type="primary" 
+                block 
+                @click="refreshDashboard">
+                <reload-outlined /> 刷新仪表盘
+              </a-button>
+              <a-button 
+                block 
+                @click="router.push('/admin/settings')">
+                <setting-outlined /> 系统设置
+              </a-button>
+              <a-button 
+                block 
+                @click="router.push('/admin/export-data')">
+                <export-outlined /> 导出数据
+              </a-button>
+            </a-space>
+          </a-card>
+        </a-col>
+      </a-row>
+
+      <a-divider />
+
+      <a-row :gutter="16">
         <!-- 最近活动 -->
-        <a-col :span="16">
+        <a-col :span="24">
           <a-card title="系统活动" :loading="loading">
             <a-tabs>
               <a-tab-pane key="logs" tab="系统日志">
@@ -251,6 +297,18 @@
           </a-card>
         </a-col>
         <a-col :span="6">
+          <a-card hoverable @click="router.push('/admin/batch-records')">
+            <template #cover>
+              <div style="background-color: #fa8c16; height: 120px; display: flex; justify-content: center; align-items: center;">
+                <database-outlined style="font-size: 64px; color: white;" />
+              </div>
+            </template>
+            <a-card-meta title="批量记录管理">
+              <template #description>上传、处理和管理批量数据</template>
+            </a-card-meta>
+          </a-card>
+        </a-col>
+        <a-col :span="6">
           <a-card hoverable @click="router.push('/admin/settings')">
             <template #cover>
               <div style="background-color: #52c41a; height: 120px; display: flex; justify-content: center; align-items: center;">
@@ -259,18 +317,6 @@
             </template>
             <a-card-meta title="系统设置">
               <template #description>配置系统参数和功能</template>
-            </a-card-meta>
-          </a-card>
-        </a-col>
-        <a-col :span="6">
-          <a-card hoverable @click="router.push('/admin/maintenance')">
-            <template #cover>
-              <div style="background-color: #fa8c16; height: 120px; display: flex; justify-content: center; align-items: center;">
-                <tool-outlined style="font-size: 64px; color: white;" />
-              </div>
-            </template>
-            <a-card-meta title="系统维护">
-              <template #description>执行系统维护任务和备份</template>
             </a-card-meta>
           </a-card>
         </a-col>
@@ -295,10 +341,15 @@ import {
   SearchOutlined,
   SettingOutlined,
   HistoryOutlined,
-  ToolOutlined
+  DatabaseOutlined,
+  ExportOutlined,
+  BarChartOutlined,
+  SafetyOutlined,
+  WarningOutlined,
+  ReloadOutlined
 } from '@ant-design/icons-vue';
 import { getAdminDashboard } from '@/api/admin';
-import type { AdminDashboardResponse, Alert } from '@/types/admin';
+import type { AdminDashboardResponse } from '@/types/admin';
 
 // 注册ECharts组件
 echarts.use([
@@ -487,7 +538,7 @@ const formatRole = (role: string): string => {
   }
 };
 
-// 获取警报类型
+// 获取警报类型对应的样式
 const getAlertType = (type: string): 'success' | 'info' | 'warning' | 'error' => {
   switch (type) {
     case 'error': return 'error';

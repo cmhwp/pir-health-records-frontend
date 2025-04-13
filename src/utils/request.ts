@@ -66,7 +66,7 @@ instance.interceptors.response.use(
       if (status === 401) {
         message.error('登录已过期，请重新登录')
         userStore.logout()
-        router.push('/login')
+        router.push('/auth/login')
       } 
       // 处理403禁止访问错误
       else if (status === 403) {
