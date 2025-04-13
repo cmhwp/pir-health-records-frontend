@@ -139,10 +139,70 @@ const routes: Array<RouteRecordRaw> = [
     meta: { requiresAuth: true, role: 'admin' },
     children: [
       {
+        path: '',
+        name: 'AdminHome',
+        component: () => import('@/components/admin/DashboardContent.vue'),
+        meta: { requiresAuth: true, role: 'admin', title: '系统概览' }
+      },
+      {
+        path: 'users',
+        name: 'AdminUsers',
+        component: () => import('@/components/admin/UsersContent.vue'),
+        meta: { requiresAuth: true, role: 'admin', title: '所有用户' }
+      },
+      {
+        path: 'system-logs',
+        name: 'SystemLogs',
+        component: () => import('@/components/admin/SystemLogsContent.vue'),
+        meta: { requiresAuth: true, role: 'admin', title: '系统日志' }
+      },
+      {
+        path: 'system-health',
+        name: 'SystemHealth',
+        component: () => import('@/components/admin/SystemHealthContent.vue'),
+        meta: { requiresAuth: true, role: 'admin', title: '系统健康' }
+      },
+      {
+        path: 'system-metrics',
+        name: 'SystemMetrics',
+        component: () => import('@/components/admin/SystemMetricsContent.vue'),
+        meta: { requiresAuth: true, role: 'admin', title: '系统指标' }
+      },
+      {
+        path: 'batch-records',
+        name: 'BatchRecords',
+        component: () => import('@/components/admin/BatchRecordsContent.vue'),
+        meta: { requiresAuth: true, role: 'admin', title: '批量管理记录' }
+      },
+      {
+        path: 'export-data',
+        name: 'ExportData',
+        component: () => import('@/components/admin/ExportDataContent.vue'),
+        meta: { requiresAuth: true, role: 'admin', title: '导出数据' }
+      },
+      {
+        path: 'maintenance',
+        name: 'Maintenance',
+        component: () => import('@/components/admin/MaintenanceContent.vue'),
+        meta: { requiresAuth: true, role: 'admin', title: '系统维护' }
+      },
+      {
+        path: 'settings',
+        name: 'SystemSettings',
+        component: () => import('@/components/admin/SettingsContent.vue'),
+        meta: { requiresAuth: true, role: 'admin', title: '系统设置' }
+      },
+      {
+        path: 'user-activity',
+        name: 'UserActivity',
+        component: () => import('@/components/admin/UserActivityContent.vue'),
+        meta: { requiresAuth: true, role: 'admin', title: '用户活动分析' }
+      },
+      {
         path: 'profile',
         name: 'AdminProfile',
         component: () => import('@/views/auth/Profile.vue'),
-        meta: { requiresAuth: true, role: 'admin', title: '管理员资料' }
+        meta: { requiresAuth: true, role: 'admin', title: '个人资料' }
       }
     ]
   },
