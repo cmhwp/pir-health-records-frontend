@@ -20,6 +20,10 @@ import type {
   BatchStatus
 } from '@/types/admin';
 import type { ApiResponse } from '@/types/auth';
+import type { 
+  SystemSettingsUpdateRequest, 
+  SystemSettingsUpdateResponse 
+} from '@/types/admin';
 
 /**
  * 获取所有用户列表
@@ -133,8 +137,8 @@ export const getSystemSettings = (): Promise<ApiResponse<SystemSettingsResponse>
  * 更新系统设置
  */
 export const updateSystemSettings = (
-  data: Record<string, any>
-): Promise<ApiResponse<{ message: string, updated: string[] }>> => {
+  data: SystemSettingsUpdateRequest
+): Promise<ApiResponse<SystemSettingsUpdateResponse>> => {
   return request.put('/admin/settings', data);
 };
 

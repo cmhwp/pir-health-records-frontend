@@ -5,7 +5,8 @@ import type {
   LoginResponse,
   RegisterRequest,
   User,
-  ChangePasswordRequest
+  ChangePasswordRequest,
+  PublicSettings
 } from '@/types/auth';
 
 /**
@@ -66,4 +67,11 @@ export const uploadAvatar = (formData: FormData): Promise<ApiResponse<{avatar: s
  */
 export const getAvatarUrl = (filename: string): string => {
   return `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/avatar/${filename}`;
+};
+
+/**
+ * 获取公开系统设置
+ */
+export const getPublicSettings = (): Promise<ApiResponse<PublicSettings>> => {
+  return request.get('/auth/public-settings');
 }; 

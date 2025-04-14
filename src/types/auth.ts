@@ -83,4 +83,31 @@ export interface ApiResponse<T = any> {
   success: boolean;
   message?: string;
   data?: T;
+}
+
+export interface PasswordPolicy {
+  min_length: number;
+  require_uppercase: boolean;
+  require_lowercase: boolean;
+  require_numbers: boolean;
+  require_special: boolean;
+}
+
+export interface AvailableRole {
+  value: string;
+  label: string;
+  description: string;
+}
+
+export interface PublicSettings {
+  password_policy: PasswordPolicy;
+  require_email_confirmation: boolean;
+  system_version: string;
+  registration_enabled: boolean;
+  available_roles: AvailableRole[];
+  [key: string]: any;  // For other dynamic settings
+}
+
+export interface PublicSettingsResponse {
+  settings: PublicSettings;
 } 

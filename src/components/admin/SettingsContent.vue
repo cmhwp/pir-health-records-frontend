@@ -14,7 +14,7 @@
         <a-alert
           v-if="hasChanges"
           message="您有未保存的更改"
-          description="请点击“保存所有更改”按钮来应用这些设置"
+          description='请点击"保存所有更改"按钮来应用这些设置'
           type="warning"
           show-icon
           style="margin-bottom: 16px"
@@ -128,6 +128,51 @@
                         <a-select-option value="researchers">对研究人员可见</a-select-option>
                         <a-select-option value="public">公开</a-select-option>
                       </a-select>
+                    </a-form-item>
+                  </a-card>
+                </a-col>
+              </a-row>
+            </a-form>
+          </a-tab-pane>
+          
+          <!-- 注册设置 -->
+          <a-tab-pane key="registration" tab="注册设置">
+            <a-form :model="registrationSettings" layout="vertical">
+              <a-row :gutter="16">
+                <a-col :span="12">
+                  <a-card title="注册控制" :bordered="false">
+                    <a-form-item label="允许用户注册" name="registration_enabled">
+                      <a-switch
+                        v-model:checked="registrationSettings.registration_enabled"
+                        @change="onSettingChange"
+                      />
+                      <div class="setting-help">
+                        关闭此选项将禁止新用户注册，但不影响现有用户登录
+                      </div>
+                    </a-form-item>
+                    
+                    <a-form-item label="需要邮箱验证" name="require_email_confirmation">
+                      <a-switch
+                        v-model:checked="registrationSettings.require_email_confirmation"
+                        @change="onSettingChange"
+                      />
+                      <div class="setting-help">
+                        开启后，新用户注册需要通过邮箱验证才能激活账号
+                      </div>
+                    </a-form-item>
+                  </a-card>
+                </a-col>
+                
+                <a-col :span="12">
+                  <a-card title="角色控制" :bordered="false">
+                    <a-form-item label="允许注册研究员账号" name="allow_researcher_registration">
+                      <a-switch
+                        v-model:checked="registrationSettings.allow_researcher_registration"
+                        @change="onSettingChange"
+                      />
+                      <div class="setting-help">
+                        开启后，用户可以在注册时选择研究员角色
+                      </div>
                     </a-form-item>
                   </a-card>
                 </a-col>
@@ -274,7 +319,14 @@ import { ref, reactive, onMounted, computed, watch } from 'vue';
 import { message } from 'ant-design-vue';
 import { SaveOutlined } from '@ant-design/icons-vue';
 import { getSystemSettings, updateSystemSettings } from '@/api/admin';
-import type { SystemSettingsResponse, SecuritySettings, PrivacySettings, SystemConfig, NotificationSettings } from '@/types/admin';
+import type { 
+  SystemSettingsResponse, 
+  SecuritySettings, 
+  PrivacySettings, 
+  SystemConfig, 
+  NotificationSettings,
+  RegistrationSettings
+} from '@/types/admin';
 
 // 状态变量
 const loading = ref<boolean>(true);
@@ -288,7 +340,9 @@ const securitySettings = reactive<SecuritySettings>({
     min_length: 8,
     require_special: true,
     require_digit: true,
-    require_uppercase: true
+    require_uppercase: true,
+    require_lowercase: true,
+    require_numbers: true
   },
   login_attempts: 5,
   session_timeout: 30,
@@ -299,6 +353,12 @@ const privacySettings = reactive<PrivacySettings>({
   pir_enabled: false,
   pir_batch_size: 10,
   default_record_visibility: 'private'
+});
+
+const registrationSettings = reactive<RegistrationSettings>({
+  registration_enabled: true,
+  require_email_confirmation: true,
+  allow_researcher_registration: false
 });
 
 const systemConfig = reactive<SystemConfig>({
@@ -326,6 +386,9 @@ const uploadLimitMB = computed({
   }
 });
 
+// 添加设置可见性状态
+const settingsVisibility = ref<Record<string, boolean>>({});
+
 // 加载系统设置
 const loadSettings = async () => {
   loading.value = true;
@@ -344,6 +407,10 @@ const loadSettings = async () => {
         Object.assign(privacySettings, response.data.settings.privacy);
       }
       
+      if (response.data.settings.registration) {
+        Object.assign(registrationSettings, response.data.settings.registration);
+      }
+      
       if (response.data.settings.system) {
         Object.assign(systemConfig, response.data.settings.system);
       }
@@ -354,6 +421,9 @@ const loadSettings = async () => {
       
       // 设置原始JSON
       rawSettingsJson.value = JSON.stringify(response.data.raw_settings, null, 2);
+      
+      // 保存设置可见性
+      settingsVisibility.value = response.data.settings_visibility || {};
     }
   } catch (error) {
     console.error('加载系统设置失败:', error);
@@ -380,6 +450,10 @@ const saveAllSettings = async () => {
       'pir_batch_size': privacySettings.pir_batch_size,
       'default_record_visibility': privacySettings.default_record_visibility,
       
+      // 注册设置
+      'registration_enabled': registrationSettings.registration_enabled,
+      'allow_researcher_registration': registrationSettings.allow_researcher_registration,
+      
       // 系统设置
       'debug_mode': systemConfig.debug_mode,
       'upload_limit': systemConfig.upload_limit,
@@ -399,6 +473,7 @@ const saveAllSettings = async () => {
       initialSettings.value = {
         security: JSON.parse(JSON.stringify(securitySettings)),
         privacy: JSON.parse(JSON.stringify(privacySettings)),
+        registration: JSON.parse(JSON.stringify(registrationSettings)),
         system: JSON.parse(JSON.stringify(systemConfig)),
         notifications: JSON.parse(JSON.stringify(notificationSettings))
       };
@@ -421,6 +496,7 @@ const onSettingChange = () => {
   const currentSettings = {
     security: securitySettings,
     privacy: privacySettings,
+    registration: registrationSettings,
     system: systemConfig,
     notifications: notificationSettings
   };
@@ -459,7 +535,7 @@ const applyRawSettings = () => {
 };
 
 // 监听设置变化
-watch([securitySettings, privacySettings, systemConfig, notificationSettings], () => {
+watch([securitySettings, privacySettings, registrationSettings, systemConfig, notificationSettings], () => {
   onSettingChange();
 }, { deep: true });
 

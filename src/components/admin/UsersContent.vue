@@ -110,23 +110,27 @@
       :footer-style="{ textAlign: 'right' }"
       @close="userDetailVisible = false"
     >
-      <a-descriptions :column="1" bordered v-if="currentUser">
-        <a-descriptions-item label="ID">{{ currentUser.id }}</a-descriptions-item>
-        <a-descriptions-item label="用户名">{{ currentUser.username }}</a-descriptions-item>
-        <a-descriptions-item label="邮箱">{{ currentUser.email }}</a-descriptions-item>
-        <a-descriptions-item label="姓名">{{ currentUser.full_name || '未设置' }}</a-descriptions-item>
-        <a-descriptions-item label="电话">{{ currentUser.phone || '未设置' }}</a-descriptions-item>
-        <a-descriptions-item label="角色">
-          <a-tag :color="getRoleColor(currentUser.role)">
-            {{ formatRole(currentUser.role) }}
-          </a-tag>
-        </a-descriptions-item>
-        <a-descriptions-item label="状态">
-          <a-badge :status="currentUser.is_active ? 'success' : 'error'" :text="currentUser.is_active ? '活跃' : '禁用'" />
-        </a-descriptions-item>
-        <a-descriptions-item label="创建时间">{{ formatDate(currentUser.created_at) }}</a-descriptions-item>
-        <a-descriptions-item label="最后登录">{{ currentUser.last_login_at ? formatDate(currentUser.last_login_at) : '从未登录' }}</a-descriptions-item>
-      </a-descriptions>
+      <a-spin :spinning="detailLoading">
+        <a-descriptions :column="1" bordered v-if="currentUser">
+          <a-descriptions-item label="ID">{{ currentUser.id }}</a-descriptions-item>
+          <a-descriptions-item label="用户名">{{ currentUser.username }}</a-descriptions-item>
+          <a-descriptions-item label="邮箱">{{ currentUser.email }}</a-descriptions-item>
+          <a-descriptions-item label="姓名">{{ currentUser.full_name || '未设置' }}</a-descriptions-item>
+          <a-descriptions-item label="电话">{{ currentUser.phone || '未设置' }}</a-descriptions-item>
+          <a-descriptions-item label="角色">
+            <a-tag :color="getRoleColor(currentUser.role)">
+              {{ formatRole(currentUser.role) }}
+            </a-tag>
+          </a-descriptions-item>
+          <a-descriptions-item label="状态">
+            <a-badge :status="currentUser.is_active ? 'success' : 'error'" :text="currentUser.is_active ? '活跃' : '禁用'" />
+          </a-descriptions-item>
+          <a-descriptions-item label="创建时间">{{ formatDate(currentUser.created_at) }}</a-descriptions-item>
+          <a-descriptions-item label="最后登录">{{ currentUser.last_login_at ? formatDate(currentUser.last_login_at) : '从未登录' }}</a-descriptions-item>
+        </a-descriptions>
+        
+        <a-empty v-else-if="!detailLoading" description="无法加载用户详情" />
+      </a-spin>
       
       <template #footer>
         <a-button style="margin-right: 8px" @click="userDetailVisible = false">关闭</a-button>
@@ -160,6 +164,9 @@
         
         <a-form-item label="密码" name="password" :rules="isEdit ? [] : [{ required: true, message: '请输入密码' }]">
           <a-input-password v-model:value="userForm.password" placeholder="请输入密码" />
+          <template v-if="!isEdit">
+            <div class="form-help-text">已设置默认强密码，您可以修改或保留此密码</div>
+          </template>
         </a-form-item>
         
         <a-form-item label="姓名" name="full_name">
@@ -257,6 +264,7 @@ const columns = [
 // 状态变量
 const users = ref<User[]>([]);
 const loading = ref<boolean>(false);
+const detailLoading = ref<boolean>(false);
 const pagination = reactive<TablePaginationConfig>({
   current: 1,
   pageSize: 10,
@@ -352,28 +360,43 @@ const resetSearch = () => {
 
 // 查看用户详情
 const viewUserDetail = async (user: User) => {
+  // 先设置基本用户信息，确保界面能显示内容
   currentUser.value = user;
+  userDetailVisible.value = true;
+  
+  // 再加载详细信息
+  detailLoading.value = true;
   try {
+    console.log('Loading user details for ID:', user.id);
     // 获取完整的用户信息
     const response = await getUser(user.id);
+    console.log('User details response:', response);
+    
     if (response.success && response.data) {
-      currentUser.value = response.data.user;
+      // 更新当前用户数据
+      currentUser.value = response.data;
+    } else {
+      console.error('Failed to get user details:', response.message);
+      message.error(response.message || '获取用户详情失败');
     }
   } catch (error) {
     console.error('获取用户详情失败:', error);
     message.error('获取用户详情失败');
+  } finally {
+    detailLoading.value = false;
   }
-  userDetailVisible.value = true;
 };
 
 // 显示创建用户模态框
 const showCreateUserModal = () => {
   isEdit.value = false;
+  // 添加默认密码
+  const defaultPassword = 'Password123!';
   Object.assign(userForm, {
     id: 0,
     username: '',
     email: '',
-    password: '',
+    password: defaultPassword,
     full_name: '',
     phone: '',
     role: 'patient',
@@ -502,5 +525,11 @@ onMounted(() => {
 <style scoped>
 .ant-form {
   margin-bottom: 16px;
+}
+
+.form-help-text {
+  color: #8c8c8c;
+  font-size: 12px;
+  margin-top: 4px;
 }
 </style> 

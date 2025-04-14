@@ -2,8 +2,8 @@ import type { ApiResponse } from './auth';
 import type { User, Role } from './auth';
 
 // User-related types
-export interface UserResponse {
-  user: User;
+export interface UserResponse extends User {
+  last_login_formatted?: string;
 }
 
 export interface UsersResponse {
@@ -143,8 +143,17 @@ export interface ExportDataResponse {
 }
 
 // System settings types
+export interface PasswordPolicy {
+  min_length: number;
+  require_uppercase: boolean;
+  require_lowercase: boolean;
+  require_numbers: boolean;
+  require_special: boolean;
+  require_digit?: boolean;
+}
+
 export interface SecuritySettings {
-  password_policy: Record<string, any>;
+  password_policy: PasswordPolicy;
   login_attempts: number;
   session_timeout: number;
   require_email_confirmation: boolean;
@@ -156,11 +165,18 @@ export interface PrivacySettings {
   default_record_visibility: string;
 }
 
+export interface RegistrationSettings {
+  registration_enabled: boolean;
+  require_email_confirmation: boolean;
+  allow_researcher_registration: boolean;
+}
+
 export interface SystemConfig {
   debug_mode: boolean;
   upload_limit: number;
   maintenance_mode: boolean;
   max_export_size: number;
+  system_version?: string;
 }
 
 export interface NotificationSettings {
@@ -169,16 +185,33 @@ export interface NotificationSettings {
   notification_types: string[];
 }
 
-export interface SystemSettingsResponse {
-  settings: {
-    security: SecuritySettings;
-    privacy: PrivacySettings;
-    system: SystemConfig;
-    notifications: NotificationSettings;
-  };
-  raw_settings: Record<string, any>;
+export interface GroupedSettings {
+  security: SecuritySettings;
+  privacy: PrivacySettings;
+  system: SystemConfig;
+  registration: RegistrationSettings;
+  notifications: NotificationSettings;
 }
 
+export interface SystemSettingsResponse {
+  settings: GroupedSettings;
+  raw_settings: Record<string, any>;
+  settings_visibility: Record<string, boolean>;
+}
+
+export interface VisibilityUpdate {
+  [key: string]: boolean;
+}
+
+export interface SystemSettingsUpdateRequest {
+  [key: string]: any;
+  visibility?: VisibilityUpdate;
+}
+
+export interface SystemSettingsUpdateResponse {
+  updated: string[];
+  errors?: Array<{ key: string; error: string }>;
+}
 
 // Admin dashboard types
 export interface SystemOverview {
