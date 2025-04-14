@@ -109,10 +109,58 @@ const routes: Array<RouteRecordRaw> = [
     meta: { requiresAuth: true, role: 'doctor' },
     children: [
       {
+        path: '',
+        name: 'DoctorHome',
+        component: () => import('@/components/doctor/DashboardContent.vue'),
+        meta: { requiresAuth: true, role: 'doctor', title: '工作台' }
+      },
+      {
+        path: 'patients',
+        name: 'DoctorPatients',
+        component: () => import('@/components/doctor/PatientsContent.vue'),
+        meta: { requiresAuth: true, role: 'doctor', title: '患者管理' }
+      },
+      {
+        path: 'appointments',
+        name: 'DoctorAppointments',
+        component: () => import('@/components/doctor/AppointmentsContent.vue'),
+        meta: { requiresAuth: true, role: 'doctor', title: '预约管理' }
+      },
+      {
+        path: 'prescriptions',
+        name: 'DoctorPrescriptions',
+        component: () => import('@/components/doctor/PrescriptionsContent.vue'),
+        meta: { requiresAuth: true, role: 'doctor', title: '处方管理' }
+      },
+      {
+        path: 'records',
+        name: 'DoctorRecords',
+        component: () => import('@/components/doctor/DoctorRecordsContent.vue'),
+        meta: { requiresAuth: true, role: 'doctor', title: '医疗记录' }
+      },
+      {
+        path: 'pir',
+        name: 'DoctorPirQuery',
+        component: () => import('@/components/doctor/PIRQueryComponent.vue'),
+        meta: { requiresAuth: true, role: 'doctor', title: '隐私保护查询' }
+      },
+      {
+        path: 'patient-statistics',
+        name: 'PatientStatistics',
+        component: () => import('@/components/doctor/PatientStatisticsContent.vue'),
+        meta: { requiresAuth: true, role: 'doctor', title: '患者统计' }
+      },
+      {
+        path: 'disease-statistics',
+        name: 'DiseaseStatistics',
+        component: () => import('@/components/doctor/DiseaseStatisticsContent.vue'),
+        meta: { requiresAuth: true, role: 'doctor', title: '疾病统计' }
+      },
+      {
         path: 'profile',
         name: 'DoctorProfile',
         component: () => import('@/views/auth/Profile.vue'),
-        meta: { requiresAuth: true, role: 'doctor', title: '医生资料' }
+        meta: { requiresAuth: true, role: 'doctor', title: '个人设置' }
       }
     ]
   },

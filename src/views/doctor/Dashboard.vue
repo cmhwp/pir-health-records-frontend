@@ -1,195 +1,189 @@
 <template>
   <a-layout style="min-height: 100vh">
-    <a-layout-sider v-model:collapsed="collapsed" collapsible>
-      <div class="logo">
-        <h3 v-if="!collapsed">PIR健康记录</h3>
-        <h3 v-else>PIR</h3>
+    <a-layout-sider
+      v-model:collapsed="collapsed"
+      collapsible
+      :trigger="null"
+      width="240"
+    >
+      <div class="logo" style="height: 32px; margin: 16px; color: white; font-size: 18px; font-weight: bold; text-align: center">
+        PIR健康系统
       </div>
-      <a-menu v-model:selectedKeys="selectedKeys" theme="dark" mode="inline">
-        <a-menu-item key="dashboard" @click="activeContent = 'dashboard'">
-          <template #icon><dashboard-outlined /></template>
+      <a-menu
+        v-model:selectedKeys="selectedKeys"
+        theme="dark"
+        mode="inline"
+        @select="handleMenuSelect"
+      >
+        <a-menu-item key="dashboard">
+          <dashboard-outlined />
           <span>工作台</span>
         </a-menu-item>
-        <a-menu-item key="patients" @click="activeContent = 'patients'">
-          <template #icon><team-outlined /></template>
+        <a-menu-item key="patients">
+          <team-outlined />
           <span>患者管理</span>
         </a-menu-item>
-        <a-menu-item key="appointments" @click="activeContent = 'appointments'">
-          <template #icon><calendar-outlined /></template>
+        <a-menu-item key="appointments">
+          <calendar-outlined />
           <span>预约管理</span>
         </a-menu-item>
-        <a-menu-item key="prescriptions" @click="activeContent = 'prescriptions'">
-          <template #icon><medicine-box-outlined /></template>
+        <a-menu-item key="prescriptions">
+          <medicine-box-outlined />
           <span>处方管理</span>
         </a-menu-item>
-        <a-menu-item key="records" @click="activeContent = 'records'">
-          <template #icon><file-text-outlined /></template>
+        <a-menu-item key="records">
+          <file-text-outlined />
           <span>医疗记录</span>
         </a-menu-item>
-        <a-sub-menu key="sub1">
+        <a-menu-item key="pir">
+          <safety-outlined />
+          <span>隐私保护查询</span>
+        </a-menu-item>
+        <a-sub-menu key="statistics">
           <template #title>
             <span>
               <bar-chart-outlined />
               <span>统计分析</span>
             </span>
           </template>
-          <a-menu-item key="statistics-1" @click="activeContent = 'statistics'">患者统计</a-menu-item>
-          <a-menu-item key="statistics-2" @click="activeContent = 'statistics'">疾病统计</a-menu-item>
+          <a-menu-item key="patient-statistics">患者统计</a-menu-item>
+          <a-menu-item key="disease-statistics">疾病统计</a-menu-item>
         </a-sub-menu>
       </a-menu>
     </a-layout-sider>
+    
     <a-layout>
       <a-layout-header style="background: #fff; padding: 0 16px; display: flex; align-items: center; justify-content: space-between">
-        <span style="font-size: 18px; font-weight: bold">医生工作台</span>
-        <a-popover placement="bottomRight" trigger="click">
-          <template #content>
-            <a-menu style="border: none; width: 160px">
-              <a-menu-item key="user-profile" @click="activeContent = 'profile'">
-                <template #icon><setting-outlined /></template>
-                个人设置
-              </a-menu-item>
-              <a-divider style="margin: 4px 0" />
-              <a-menu-item key="user-logout" @click="handleLogout">
-                <template #icon><logout-outlined /></template>
-                退出登录
-              </a-menu-item>
-            </a-menu>
-          </template>
-          <div style="display: flex; align-items: center; cursor: pointer">
-            <a-avatar :size="32" style="background-color: #52c41a">
-              {{ userName.charAt(0).toUpperCase() }}
-            </a-avatar>
-            <span style="margin-left: 8px">{{ userName }} 医生</span>
-          </div>
-        </a-popover>
+        <div style="display: flex; align-items: center">
+          <menu-unfold-outlined
+            v-if="collapsed"
+            class="trigger"
+            style="font-size: 18px; cursor: pointer; margin-right: 16px"
+            @click="collapsed = !collapsed"
+          />
+          <menu-fold-outlined
+            v-else
+            class="trigger"
+            style="font-size: 18px; cursor: pointer; margin-right: 16px"
+            @click="collapsed = !collapsed"
+          />
+          <span style="font-size: 18px; font-weight: bold">{{ currentPageTitle }}</span>
+        </div>
+        <div style="display: flex; align-items: center">
+          <a-badge :count="unreadNotifications" :dot="unreadNotifications > 0">
+            <a-button shape="circle" icon-only @click="showNotifications = true">
+              <template #icon>
+                <bell-outlined />
+              </template>
+            </a-button>
+          </a-badge>
+          
+          <a-popover placement="bottomRight" trigger="click">
+            <template #content>
+              <a-menu style="border: none; width: 160px">
+                <a-menu-item key="user-profile" @click="handleMenuSelect({ key: 'profile' })">
+                  <template #icon><user-outlined /></template>
+                  个人设置
+                </a-menu-item>
+                <a-divider style="margin: 4px 0" />
+                <a-menu-item key="user-logout" @click="handleLogout">
+                  <template #icon><logout-outlined /></template>
+                  退出登录
+                </a-menu-item>
+              </a-menu>
+            </template>
+            <div style="margin-left: 16px; display: flex; align-items: center; cursor: pointer">
+              <a-avatar :size="32" style="background-color: #52c41a">
+                {{ userName.charAt(0).toUpperCase() }}
+              </a-avatar>
+              <span style="margin-left: 8px">{{ userName }} 医生</span>
+            </div>
+          </a-popover>
+        </div>
       </a-layout-header>
+      
       <a-layout-content style="margin: 16px">
         <a-breadcrumb style="margin: 16px 0">
-          <a-breadcrumb-item>首页</a-breadcrumb-item>
-          <a-breadcrumb-item>{{ breadcrumbTitle }}</a-breadcrumb-item>
+          <a-breadcrumb-item>
+            <router-link to="/doctor">首页</router-link>
+          </a-breadcrumb-item>
+          
+          <a-breadcrumb-item v-if="route.path !== '/doctor'">
+            {{ currentPageTitle }}
+          </a-breadcrumb-item>
         </a-breadcrumb>
+        
         <div style="padding: 24px; background: #fff; min-height: 360px">
-          <!-- 工作台内容 -->
-          <div v-if="activeContent === 'dashboard'">
-            <h1>医生工作台</h1>
-            <a-row :gutter="16">
-              <a-col :span="6">
-                <a-statistic title="今日患者" :value="0" style="margin-bottom: 16px">
-                  <template #suffix>
-                    <user-outlined />
-                  </template>
-                </a-statistic>
-              </a-col>
-              <a-col :span="6">
-                <a-statistic title="待处理预约" :value="0" style="margin-bottom: 16px">
-                  <template #suffix>
-                    <calendar-outlined />
-                  </template>
-                </a-statistic>
-              </a-col>
-              <a-col :span="6">
-                <a-statistic title="今日处方" :value="0" style="margin-bottom: 16px">
-                  <template #suffix>
-                    <medicine-box-outlined />
-                  </template>
-                </a-statistic>
-              </a-col>
-              <a-col :span="6">
-                <a-statistic title="新增医疗记录" :value="0" style="margin-bottom: 16px">
-                  <template #suffix>
-                    <file-text-outlined />
-                  </template>
-                </a-statistic>
-              </a-col>
-            </a-row>
-            
-            <a-divider />
-            
-            <a-row :gutter="16">
-              <a-col :span="8">
-                <a-card title="我的患者" :bordered="false">
-                  <template #extra><a href="#">更多</a></template>
-                  <p>管理您的患者列表</p>
-                  <a-button type="primary" @click="activeContent = 'patients'">查看患者列表</a-button>
-                </a-card>
-              </a-col>
-              <a-col :span="8">
-                <a-card title="预约管理" :bordered="false">
-                  <template #extra><a href="#">更多</a></template>
-                  <p>管理您的医疗预约</p>
-                  <a-button type="primary" @click="activeContent = 'appointments'">管理预约</a-button>
-                </a-card>
-              </a-col>
-              <a-col :span="8">
-                <a-card title="处方管理" :bordered="false">
-                  <template #extra><a href="#">更多</a></template>
-                  <p>管理患者处方</p>
-                  <a-button type="primary" @click="activeContent = 'prescriptions'">管理处方</a-button>
-                </a-card>
-              </a-col>
-            </a-row>
-            
-            <a-divider />
-            
-            <a-row :gutter="16">
-              <a-col :span="24">
-                <a-card title="今日预约" :bordered="false">
-                  <a-empty description="暂无预约" />
-                </a-card>
-              </a-col>
-            </a-row>
-          </div>
-
-          <!-- 患者管理内容 -->
-          <div v-if="activeContent === 'patients'">
-            <h1>患者管理</h1>
-            <a-empty description="暂无患者数据" />
-          </div>
-
-          <!-- 预约管理内容 -->
-          <div v-if="activeContent === 'appointments'">
-            <h1>预约管理</h1>
-            <a-empty description="暂无预约数据" />
-          </div>
-
-          <!-- 处方管理内容 -->
-          <div v-if="activeContent === 'prescriptions'">
-            <h1>处方管理</h1>
-            <a-empty description="暂无处方数据" />
-          </div>
-
-          <!-- 医疗记录内容 -->
-          <div v-if="activeContent === 'records'">
-            <h1>医疗记录</h1>
-            <a-empty description="暂无医疗记录" />
-          </div>
-
-          <!-- 统计分析内容 -->
-          <div v-if="activeContent === 'statistics'">
-            <h1>统计分析</h1>
-            <a-empty description="暂无统计数据" />
-          </div>
-
-          <!-- 个人设置内容 -->
-          <div v-if="activeContent === 'profile'">
-            <h1>个人设置</h1>
-            <a-card>
-              <profile-component />
-            </a-card>
-          </div>
+          <router-view v-slot="{ Component }">
+            <transition name="fade" mode="out-in">
+              <component :is="Component" />
+            </transition>
+          </router-view>
         </div>
       </a-layout-content>
+      
       <a-layout-footer style="text-align: center">
         PIR健康记录系统 ©2023 隐私保护技术医疗健康记录
       </a-layout-footer>
     </a-layout>
+    
+    <!-- 通知抽屉 -->
+    <a-drawer
+      title="我的通知"
+      placement="right"
+      :open="showNotifications"
+      @close="showNotifications = false"
+      width="400"
+    >
+      <a-spin :spinning="loadingNotifications">
+        <a-list
+          v-if="notifications.length > 0"
+          item-layout="horizontal"
+          :data-source="notifications"
+        >
+          <template #header>
+            <div style="display: flex; justify-content: space-between; align-items: center">
+              <span>您有 {{ unreadNotifications }} 条未读通知</span>
+              <a-button type="link" @click="markAllAsRead">全部标为已读</a-button>
+            </div>
+          </template>
+          <template #renderItem="{ item }">
+            <a-list-item>
+              <a-list-item-meta :title="item.title" :description="item.message">
+                <template #avatar>
+                  <a-badge :dot="!item.is_read" color="blue">
+                    <mail-outlined v-if="item.type === 'message'" style="font-size: 20px" />
+                    <notification-outlined v-else-if="item.type === 'system'" style="font-size: 20px" />
+                    <share-alt-outlined v-else-if="item.type === 'record_shared'" style="font-size: 20px" />
+                    <file-sync-outlined v-else-if="item.type === 'record_updated'" style="font-size: 20px" />
+                    <calendar-outlined v-else-if="item.type === 'appointment'" style="font-size: 20px" />
+                    <info-circle-outlined v-else style="font-size: 20px" />
+                  </a-badge>
+                </template>
+              </a-list-item-meta>
+              <template #actions>
+                <a @click="markNotificationRead(item.id)">
+                  <check-outlined />
+                </a>
+                <a @click="deleteNotification(item.id)">
+                  <delete-outlined />
+                </a>
+              </template>
+              <div style="color: #999; font-size: 12px">{{ formatDate(item.created_at) }}</div>
+            </a-list-item>
+          </template>
+        </a-list>
+        <a-empty v-else description="暂无通知" />
+      </a-spin>
+    </a-drawer>
   </a-layout>
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, watch, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, onMounted, watchEffect, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { message } from 'ant-design-vue';
+import dayjs from 'dayjs';
 import { 
   DashboardOutlined, 
   TeamOutlined,
@@ -199,86 +193,263 @@ import {
   BarChartOutlined,
   UserOutlined,
   SettingOutlined,
-  LogoutOutlined 
+  SafetyOutlined,
+  LogoutOutlined,
+  MenuUnfoldOutlined,
+  MenuFoldOutlined,
+  BellOutlined,
+  MailOutlined,
+  NotificationOutlined,
+  ShareAltOutlined,
+  FileSyncOutlined,
+  CalendarOutlined as CalendarOutlinedDuplicate,
+  InfoCircleOutlined,
+  CheckOutlined,
+  DeleteOutlined
 } from '@ant-design/icons-vue';
-import { logout } from '@/api/auth';
-import ProfileComponent from '@/views/auth/Profile.vue';
+import { getNotifications, getNotificationCount, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification as deleteNotificationApi } from '@/api/notifications';
+import type { Notification } from '@/types/notifications';
+import { useUserStore } from '@/store/user';
 
 const router = useRouter();
+const route = useRoute();
 const collapsed = ref<boolean>(false);
 const selectedKeys = ref<string[]>(['dashboard']);
 const userName = ref<string>(localStorage.getItem('userName') || '医生用户');
-const activeContent = ref('dashboard');
+const userStore = useUserStore();
 
-// 根据当前激活的内容计算面包屑标题
-const breadcrumbTitle = computed(() => {
-  switch (activeContent.value) {
-    case 'dashboard': return '工作台';
-    case 'patients': return '患者管理';
-    case 'appointments': return '预约管理';
-    case 'prescriptions': return '处方管理';
-    case 'records': return '医疗记录';
-    case 'statistics': return '统计分析';
-    case 'profile': return '个人设置';
-    default: return '工作台';
+// 通知相关
+const showNotifications = ref<boolean>(false);
+const loadingNotifications = ref<boolean>(false);
+const notifications = ref<Notification[]>([]);
+const unreadNotifications = ref<number>(0);
+
+// 计算当前页面标题
+const currentPageTitle = computed(() => {
+  // 从路由元数据中获取标题
+  if (route.meta.title) {
+    return route.meta.title as string;
   }
+  
+  // 后备方案：根据路径判断标题
+  const path = route.path;
+  
+  if (path === '/doctor') {
+    return '工作台';
+  } else if (path.includes('/doctor/patients')) {
+    return '患者管理';
+  } else if (path.includes('/doctor/appointments')) {
+    return '预约管理';
+  } else if (path.includes('/doctor/prescriptions')) {
+    return '处方管理';
+  } else if (path.includes('/doctor/records')) {
+    return '医疗记录';
+  } else if (path.includes('/doctor/pir')) {
+    return '隐私保护查询';
+  } else if (path.includes('/doctor/patient-statistics')) {
+    return '患者统计';
+  } else if (path.includes('/doctor/disease-statistics')) {
+    return '疾病统计';
+  } else if (path.includes('/doctor/profile')) {
+    return '个人设置';
+  }
+  
+  return '工作台';
 });
 
-// 监听内容变化时更新selectedKeys和保存到localStorage
-watch(activeContent, (newVal) => {
-  selectedKeys.value = [newVal];
-  localStorage.setItem('doctorSelectedMenu', newVal);
-});
-
-const goToProfile = () => {
-  activeContent.value = 'profile';
+// 处理菜单选择
+const handleMenuSelect = ({ key }: { key: string }) => {
+  localStorage.setItem('doctorSelectedMenu', key);
+  
+  // 根据选择的菜单项导航到相应的路由
+  if (key === 'profile') {
+    router.push('/doctor/profile');
+  } else if (key === 'dashboard') {
+    router.push('/doctor');
+  } else {
+    router.push(`/doctor/${key}`);
+  }
 };
 
+// 处理退出登录
 const handleLogout = async () => {
   try {
-    await logout();
+    await userStore.logout();
     message.success('退出登录成功');
+    router.push('/auth/login');
   } catch (error) {
     console.error('退出登录失败:', error);
     message.error('退出登录失败，但已清除本地登录状态');
-  } finally {
-    // 无论请求成功或失败，都清除本地存储并跳转
-    localStorage.removeItem('token');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('doctorSelectedMenu');
     router.push('/auth/login');
   }
 };
 
-// 组件挂载时，从localStorage读取上次选中的菜单项
+// 格式化日期
+const formatDate = (dateString: string) => {
+  return dayjs(dateString).format('YYYY-MM-DD HH:mm');
+};
+
+// 获取通知列表
+const fetchNotifications = async () => {
+  loadingNotifications.value = true;
+  try {
+    const response = await getNotifications();
+    if (response.success && response.data) {
+      notifications.value = response.data.notifications;
+    }
+  } catch (error) {
+    console.error('获取通知失败:', error);
+    message.error('获取通知列表失败');
+  } finally {
+    loadingNotifications.value = false;
+  }
+};
+
+// 获取未读通知数量
+const fetchNotificationCount = async () => {
+  try {
+    const response = await getNotificationCount();
+    if (response.success && response.data) {
+      unreadNotifications.value = response.data.unread;
+    }
+  } catch (error) {
+    console.error('获取未读通知数量失败:', error);
+  }
+};
+
+// 标记通知为已读
+const markNotificationRead = async (id: string) => {
+  try {
+    const response = await markNotificationAsRead(id);
+    if (response.success) {
+      message.success('已标记为已读');
+      fetchNotifications();
+      fetchNotificationCount();
+    }
+  } catch (error) {
+    console.error('标记通知失败:', error);
+    message.error('标记通知失败');
+  }
+};
+
+// 标记所有通知为已读
+const markAllAsRead = async () => {
+  try {
+    const response = await markAllNotificationsAsRead();
+    if (response.success) {
+      message.success('已将所有通知标记为已读');
+      fetchNotifications();
+      fetchNotificationCount();
+    }
+  } catch (error) {
+    console.error('标记所有通知失败:', error);
+    message.error('标记所有通知失败');
+  }
+};
+
+// 删除通知
+const deleteNotification = async (id: string) => {
+  try {
+    const response = await deleteNotificationApi(id);
+    if (response.success) {
+      message.success('通知已删除');
+      fetchNotifications();
+      fetchNotificationCount();
+    }
+  } catch (error) {
+    console.error('删除通知失败:', error);
+    message.error('删除通知失败');
+  }
+};
+
+// 设置初始选中菜单项
+const setInitialSelectedKey = () => {
+  const path = route.path;
+  
+  if (path === '/doctor') {
+    selectedKeys.value = ['dashboard'];
+  } else if (path.includes('/doctor/patients')) {
+    selectedKeys.value = ['patients'];
+  } else if (path.includes('/doctor/appointments')) {
+    selectedKeys.value = ['appointments'];
+  } else if (path.includes('/doctor/prescriptions')) {
+    selectedKeys.value = ['prescriptions'];
+  } else if (path.includes('/doctor/records')) {
+    selectedKeys.value = ['records'];
+  } else if (path.includes('/doctor/pir')) {
+    selectedKeys.value = ['pir'];
+  } else if (path.includes('/doctor/patient-statistics')) {
+    selectedKeys.value = ['patient-statistics'];
+  } else if (path.includes('/doctor/disease-statistics')) {
+    selectedKeys.value = ['disease-statistics'];
+  } else if (path.includes('/doctor/profile')) {
+    selectedKeys.value = ['profile'];
+  }
+};
+
+// 监听路由变化，更新选中的菜单项
+watch(
+  () => route.path,
+  () => {
+    setInitialSelectedKey();
+  }
+);
+
+// 组件挂载时获取通知和设置初始选中菜单项
 onMounted(() => {
+  fetchNotifications();
+  fetchNotificationCount();
+  
+  // 从localStorage读取上次选中的菜单项
   const savedMenu = localStorage.getItem('doctorSelectedMenu');
   if (savedMenu) {
-    activeContent.value = savedMenu;
     selectedKeys.value = [savedMenu];
   }
+  
+  setInitialSelectedKey();
+  
+  // 设置定时获取未读通知数量
+  const timer = setInterval(fetchNotificationCount, 60000); // 每分钟更新一次
+  
+  // 组件卸载时清除定时器
+  watchEffect((onInvalidate) => {
+    onInvalidate(() => {
+      clearInterval(timer);
+    });
+  });
 });
 </script>
 
 <style scoped>
 .logo {
-  height: 32px;
   margin: 16px;
-  color: #fff;
-  text-align: center;
-  line-height: 32px;
-  overflow: hidden;
-}
-
-.logo h3 {
   color: white;
-  margin: 0;
+  font-size: 18px;
+  font-weight: bold;
+  text-align: center;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.ant-layout-sider-collapsed .logo h3 {
-  display: inline-block;
-  margin: 0;
-  font-size: 16px;
+.trigger {
+  font-size: 18px;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.trigger:hover {
+  color: #1890ff;
+}
+
+/* 添加过渡动画样式 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style> 
