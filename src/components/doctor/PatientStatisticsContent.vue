@@ -156,8 +156,7 @@ const updateGenderChart = (genderData: Record<string, number>) => {
   
   const chartData = [
     { value: genderData['male'] || 0, name: '男性' },
-    { value: genderData['female'] || 0, name: '女性' },
-    { value: genderData['other'] || 0, name: '其他' }
+    { value: genderData['female'] || 0, name: '女性' }
   ];
   
   genderChart.setOption({
@@ -267,7 +266,7 @@ const initGenderChart = () => {
       orient: 'vertical',
       right: 10,
       top: 'center',
-      data: ['男性', '女性', '其他']
+      data: ['男性', '女性']
     },
     series: [
       {
@@ -277,8 +276,7 @@ const initGenderChart = () => {
         center: ['40%', '50%'],
         data: [
           { value: 0, name: '男性' },
-          { value: 0, name: '女性' },
-          { value: 0, name: '其他' }
+          { value: 0, name: '女性' }
         ],
         emphasis: {
           itemStyle: {

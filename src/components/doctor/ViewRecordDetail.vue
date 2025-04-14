@@ -1,152 +1,182 @@
 <template>
   <div>
-    <a-descriptions title="记录详情" bordered :column="2">
-      <a-descriptions-item label="记录标题">{{ record.title }}</a-descriptions-item>
-      <a-descriptions-item label="记录类型">
-        <a-tag :color="getRecordTypeColor(record.record_type)">
-          {{ getRecordTypeLabel(record.record_type) }}
-        </a-tag>
-      </a-descriptions-item>
-      <a-descriptions-item label="患者姓名">{{ record.patient_name }}</a-descriptions-item>
-      <a-descriptions-item label="创建日期">{{ formatDate(record.created_at) }}</a-descriptions-item>
-      <a-descriptions-item label="记录日期">{{ formatDate(record.record_date) }}</a-descriptions-item>
-      <a-descriptions-item label="更新日期">{{ formatDate(record.updated_at) }}</a-descriptions-item>
-      <a-descriptions-item label="记录医生">{{ record.doctor_name || '未指定' }}</a-descriptions-item>
-      <a-descriptions-item label="科室">{{ record.department || '未指定' }}</a-descriptions-item>
-      <a-descriptions-item label="医院">{{ record.hospital || '未指定' }}</a-descriptions-item>
-      <a-descriptions-item label="加密状态">
-        <a-tag :color="record.is_encrypted ? 'green' : 'blue'">
-          {{ record.is_encrypted ? '已加密' : '未加密' }}
-        </a-tag>
-      </a-descriptions-item>
-      <a-descriptions-item label="可见性" :span="2">
-        <a-tag :color="getVisibilityColor(record.visibility)">
-          {{ getVisibilityLabel(record.visibility) }}
-        </a-tag>
-      </a-descriptions-item>
-      <a-descriptions-item label="描述" :span="2">
-        {{ record.description || '无描述' }}
-      </a-descriptions-item>
-      <a-descriptions-item label="标签" :span="2">
-        <template v-if="record.tags">
-          <a-tag 
-            v-for="(tag, index) in record.tags.split(',')" 
-            :key="index"
-            color="blue"
-            style="margin-bottom: 4px;"
-          >
-            {{ tag.trim() }}
-          </a-tag>
-        </template>
-        <template v-else>无标签</template>
-      </a-descriptions-item>
-    </a-descriptions>
-
-    <!-- 文件列表 -->
-    <template v-if="record.files && record.files.length > 0">
-      <a-divider />
-      <h3>相关文件</h3>
-      <a-list
-        item-layout="horizontal"
-        :data-source="record.files"
-      >
-        <template #renderItem="{ item }">
-          <a-list-item>
-            <a-list-item-meta
-              :title="item.file_name"
-              :description="`类型: ${item.file_type} | 大小: ${formatFileSize(item.file_size)} | 上传时间: ${formatDate(item.uploaded_at)}`"
-            >
-              <template #avatar>
-                <a-avatar :icon="getFileIcon(item.file_type)" />
-              </template>
-            </a-list-item-meta>
-            <template #actions>
-              <a-button 
-                type="primary" 
-                size="small" 
-                :disabled="record.is_encrypted" 
-                @click="downloadFile(item)"
-              >
-                <download-outlined /> 下载
-              </a-button>
+    <a-spin :spinning="loading">
+      <template v-if="recordData">
+        <a-descriptions bordered :column="1" size="middle">
+          <a-descriptions-item label="记录标题">{{ recordData.title }}</a-descriptions-item>
+          <a-descriptions-item label="记录类型">
+            <a-tag :color="getRecordTypeColor(recordData.record_type)">
+              {{ getRecordTypeLabel(recordData.record_type) }}
+            </a-tag>
+          </a-descriptions-item>
+          <a-descriptions-item label="患者信息">{{ recordData.patient_name }}</a-descriptions-item>
+          <a-descriptions-item label="记录日期">{{ formatDate(recordData.record_date) }}</a-descriptions-item>
+          <a-descriptions-item label="记录描述">{{ recordData.description || '无' }}</a-descriptions-item>
+          <a-descriptions-item label="可见性">
+            <a-tag :color="getVisibilityColor(recordData.visibility)">
+              {{ getVisibilityLabel(recordData.visibility) }}
+            </a-tag>
+          </a-descriptions-item>
+          <a-descriptions-item label="标签">
+            <template v-if="recordData.tags">
+              <a-tag v-for="tag in recordData.tags.split(',')" :key="tag" color="blue">
+                {{ tag.trim() }}
+              </a-tag>
             </template>
-            <div v-if="item.description" class="file-description">
-              <a-typography-paragraph>
-                <info-circle-outlined /> 描述: {{ item.description }}
-              </a-typography-paragraph>
-            </div>
-          </a-list-item>
-        </template>
-      </a-list>
-      <a-alert
-        v-if="record.is_encrypted"
-        message="文件已加密"
-        description="这些文件已加密存储，需要解密记录后才能下载和查看。"
-        type="info"
-        show-icon
-        style="margin-top: 16px"
-      />
-    </template>
-
-    <!-- 记录具体内容 -->
-    <template v-if="record.data">
-      <a-divider />
-      <h3>记录内容</h3>
-      
-      <!-- 如果是药物记录，显示药物信息 -->
-      <template v-if="record.record_type === 'medication' && record.medication">
-        <a-descriptions bordered :column="2">
-          <a-descriptions-item label="药物名称">{{ record.medication.medication_name }}</a-descriptions-item>
-          <a-descriptions-item label="剂量">{{ record.medication.dosage || '未指定' }}</a-descriptions-item>
-          <a-descriptions-item label="频率">{{ record.medication.frequency || '未指定' }}</a-descriptions-item>
-          <a-descriptions-item label="开始日期">{{ formatDate(record.medication.start_date) }}</a-descriptions-item>
-          <a-descriptions-item label="结束日期" :span="2">{{ formatDate(record.medication.end_date) }}</a-descriptions-item>
-          <a-descriptions-item label="说明" :span="2">{{ record.medication.instructions || '无说明' }}</a-descriptions-item>
-          <a-descriptions-item label="副作用" :span="2">{{ record.medication.side_effects || '无副作用记录' }}</a-descriptions-item>
+            <template v-else>无</template>
+          </a-descriptions-item>
+          <a-descriptions-item label="创建时间">{{ formatDate(recordData.created_at) }}</a-descriptions-item>
+          <a-descriptions-item label="加密状态">
+            <a-tag :color="recordData.is_encrypted ? 'green' : 'blue'">
+              {{ recordData.is_encrypted ? '已加密' : '未加密' }}
+            </a-tag>
+          </a-descriptions-item>
         </a-descriptions>
-      </template>
-      
-      <!-- 如果是生命体征记录，显示体征数据 -->
-      <template v-else-if="record.record_type === 'vital_signs' && record.vital_signs">
-        <a-table
-          :columns="vitalSignColumns"
-          :data-source="record.vital_signs"
-          :pagination="false"
-          bordered
-        />
-      </template>
-      
-      <!-- 其它记录类型，显示通用数据 -->
-      <template v-else>
-        <a-collapse ghost>
-          <a-collapse-panel key="1" header="记录数据详情">
-            <pre class="data-container">{{ JSON.stringify(record.data, null, 2) }}</pre>
-          </a-collapse-panel>
-        </a-collapse>
-      </template>
-    </template>
 
-    <div class="action-footer">
-      <a-button @click="$emit('close')">关闭</a-button>
-    </div>
+        <!-- 记录内容区域 -->
+        <a-divider>记录内容</a-divider>
+
+        <a-alert 
+          v-if="recordData.is_encrypted && !decrypted" 
+          message="此记录已加密" 
+          description="请输入解密密钥以查看完整内容" 
+          type="info" 
+          show-icon 
+          style="margin-bottom: 16px"
+        />
+
+        <template v-if="recordData.is_encrypted && !decrypted">
+          <a-form layout="inline">
+            <a-form-item label="解密密钥">
+              <a-input-password v-model:value="decryptKey" placeholder="请输入解密密钥" />
+            </a-form-item>
+            <a-form-item>
+              <a-button type="primary" :loading="decrypting" @click="handleDecrypt">解密</a-button>
+            </a-form-item>
+          </a-form>
+        </template>
+
+        <template v-else>
+          <!-- 根据记录类型显示不同的内容 -->
+          <div v-if="recordData.record_type === 'laboratory'">
+            <a-card title="检验结果" style="margin-bottom: 16px">
+              <template v-if="recordData.data && recordData.data.results">
+                <a-table 
+                  :dataSource="recordData.data.results" 
+                  :pagination="false"
+                  :columns="labResultColumns"
+                />
+              </template>
+              <a-empty v-else description="无检验结果数据" />
+            </a-card>
+          </div>
+
+          <div v-else-if="recordData.record_type === 'medication'">
+            <a-card title="用药信息" style="margin-bottom: 16px">
+              <a-descriptions bordered :column="1">
+                <a-descriptions-item v-if="recordData.data?.medication_name" label="药物名称">
+                  {{ recordData.data.medication_name }}
+                </a-descriptions-item>
+                <a-descriptions-item v-if="recordData.data?.dosage" label="剂量">
+                  {{ recordData.data.dosage }}
+                </a-descriptions-item>
+                <a-descriptions-item v-if="recordData.data?.frequency" label="频率">
+                  {{ recordData.data.frequency }}
+                </a-descriptions-item>
+                <a-descriptions-item v-if="recordData.data?.duration" label="用药时长">
+                  {{ recordData.data.duration }}
+                </a-descriptions-item>
+                <a-descriptions-item v-if="recordData.data?.instructions" label="用药说明">
+                  {{ recordData.data.instructions }}
+                </a-descriptions-item>
+              </a-descriptions>
+            </a-card>
+          </div>
+
+          <div v-else-if="recordData.record_type === 'imaging'">
+            <a-card title="影像信息" style="margin-bottom: 16px">
+              <div v-if="recordData.data?.findings" class="content-section">
+                <h4>诊断发现:</h4>
+                <p>{{ recordData.data.findings }}</p>
+              </div>
+              <div v-if="recordData.data?.impression" class="content-section">
+                <h4>总体印象:</h4>
+                <p>{{ recordData.data.impression }}</p>
+              </div>
+            </a-card>
+          </div>
+
+          <!-- 附件文件列表 -->
+          <a-divider>附件文件</a-divider>
+          <a-list 
+            v-if="recordData.files && recordData.files.length > 0" 
+            :dataSource="recordData.files"
+            size="small"
+          >
+            <template #renderItem="{ item }">
+              <a-list-item>
+                <template #actions>
+                  <a-button type="link" @click="downloadFile(item)">
+                    <download-outlined /> 下载
+                  </a-button>
+                  <a-button v-if="canPreviewFile(item)" type="link" @click="previewFile(item)">
+                    <eye-outlined /> 预览
+                  </a-button>
+                </template>
+                <a-list-item-meta>
+                  <template #title>{{ item.filename }}</template>
+                  <template #description>
+                    <span>{{ formatFileSize(item.size) }} | {{ item.mime_type }}</span>
+                  </template>
+                  <template #avatar>
+                    <file-outlined />
+                  </template>
+                </a-list-item-meta>
+              </a-list-item>
+            </template>
+          </a-list>
+          <a-empty v-else description="无附件文件" />
+        </template>
+
+        <!-- 底部按钮 -->
+        <div style="margin-top: 24px; text-align: right;">
+          <a-button type="primary" @click="handleClose">关闭</a-button>
+        </div>
+      </template>
+
+      <a-empty v-else-if="!loading" description="无法加载记录详情" />
+    </a-spin>
+
+    <!-- 文件预览模态框 -->
+    <a-modal
+      v-model:visible="previewVisible"
+      title="文件预览"
+      width="800px"
+      footer={null}
+      @cancel="previewVisible = false"
+    >
+      <div v-if="previewType === 'image'" class="preview-container">
+        <img :src="previewUrl" style="max-width: 100%; max-height: 80vh;" />
+      </div>
+      <div v-else-if="previewType === 'pdf'" class="preview-container">
+        <iframe :src="previewUrl" style="width: 100%; height: 80vh; border: none;"></iframe>
+      </div>
+      <div v-else class="preview-container">
+        <p>无法预览该类型文件，请下载后查看</p>
+      </div>
+    </a-modal>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { computed, defineProps, defineEmits } from 'vue';
+import { ref, onMounted, computed, defineProps, defineEmits, h } from 'vue';
+import { message, Tag } from 'ant-design-vue';
 import dayjs from 'dayjs';
-import { 
-  DownloadOutlined, 
-  InfoCircleOutlined,
-  FileWordOutlined,
-  FileExcelOutlined,
-  FilePdfOutlined,
-  FileImageOutlined,
-  FileTextOutlined,
-  FileUnknownOutlined
-} from '@ant-design/icons-vue';
-import { message } from 'ant-design-vue';
+import { FileOutlined, EyeOutlined, DownloadOutlined } from '@ant-design/icons-vue';
+import { decryptRecord } from '@/api/doctor';
+import type { RecordType, RecordVisibility } from '@/types/health';
 
+// 组件属性
 const props = defineProps({
   record: {
     type: Object,
@@ -154,19 +184,35 @@ const props = defineProps({
   }
 });
 
-defineEmits(['close']);
+// 组件事件
+const emit = defineEmits(['close']);
 
-// 生命体征表格列定义
-const vitalSignColumns = [
+// 状态变量
+const loading = ref(false);
+const recordData = ref<any>(null);
+const decrypted = ref(false);
+const decryptKey = ref('');
+const decrypting = ref(false);
+const previewVisible = ref(false);
+const previewUrl = ref('');
+const previewType = ref('');
+
+// 实验室结果列定义
+const labResultColumns = [
   {
-    title: '类型',
-    dataIndex: 'type',
-    key: 'type',
+    title: '检验项目',
+    dataIndex: 'item',
+    key: 'item',
   },
   {
-    title: '数值',
+    title: '结果',
     dataIndex: 'value',
     key: 'value',
+  },
+  {
+    title: '参考值',
+    dataIndex: 'reference',
+    key: 'reference',
   },
   {
     title: '单位',
@@ -174,21 +220,113 @@ const vitalSignColumns = [
     key: 'unit',
   },
   {
-    title: '测量时间',
-    dataIndex: 'measured_at',
-    key: 'measured_at',
-    customRender: ({ text }: { text: string }) => formatDate(text),
+    title: '状态',
+    dataIndex: 'status',
+    key: 'status',
+    customRender: ({ text }: { text: string }) => {
+      const color = text === 'normal' ? 'green' : text === 'high' ? 'red' : text === 'low' ? 'orange' : 'blue';
+      const label = text === 'normal' ? '正常' : text === 'high' ? '偏高' : text === 'low' ? '偏低' : text;
+      return h(Tag, { color }, label);
+    },
   },
 ];
 
-// 格式化日期
-const formatDate = (dateString: string | undefined) => {
-  if (!dateString) return '未设置';
-  return dayjs(dateString).format('YYYY-MM-DD HH:mm:ss');
+// 记录数据
+const initRecordData = () => {
+  recordData.value = props.record;
+  // 检查记录是否已解密
+  decrypted.value = !recordData.value.is_encrypted || (recordData.value.data && Object.keys(recordData.value.data).length > 0);
+};
+
+// 解密记录
+const handleDecrypt = async () => {
+  if (!decryptKey.value) {
+    message.error('请输入解密密钥');
+    return;
+  }
+
+  decrypting.value = true;
+  try {
+    const response = await decryptRecord(recordData.value.mongo_id, { encryption_key: decryptKey.value });
+    if (response.success && response.data) {
+      recordData.value = response.data.record;
+      decrypted.value = true;
+      message.success('解密成功');
+      decryptKey.value = '';
+    } else {
+      message.error(response.message || '解密失败');
+    }
+  } catch (error: any) {
+    message.error(error.message || '解密过程发生错误');
+  } finally {
+    decrypting.value = false;
+  }
+};
+
+// 下载文件
+const downloadFile = async (file: any) => {
+  try {
+    // 模拟下载实现
+    message.success(`正在下载文件: ${file.filename}`);
+    // 实际项目中应该调用API获取下载链接
+    // const response = await getRecordFileUrl(recordData.value.mongo_id, file.id);
+    // if (response.success && response.data?.download_url) {
+    //   window.open(response.data.download_url, '_blank');
+    // } else {
+    //   message.error(response.message || '获取下载链接失败');
+    // }
+  } catch (error: any) {
+    message.error(error.message || '下载文件失败');
+  }
+};
+
+// 预览文件
+const previewFile = async (file: any) => {
+  if (!canPreviewFile(file)) {
+    message.warning('该文件类型不支持在线预览');
+    return;
+  }
+
+  try {
+    // 模拟预览实现
+    previewUrl.value = 'https://example.com/preview';
+    
+    if (file.mime_type.startsWith('image/')) {
+      previewType.value = 'image';
+    } else if (file.mime_type === 'application/pdf') {
+      previewType.value = 'pdf';
+    } else {
+      previewType.value = 'other';
+    }
+    
+    previewVisible.value = true;
+    // 实际项目中应该调用API获取预览链接
+    // const response = await getRecordFileUrl(recordData.value.mongo_id, file.id);
+    // if (response.success && response.data?.download_url) {
+    //   previewUrl.value = response.data.download_url;
+    //   ...
+  } catch (error: any) {
+    message.error(error.message || '预览文件失败');
+  }
+};
+
+// 检查文件是否可预览
+const canPreviewFile = (file: any) => {
+  const previewableTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+  return previewableTypes.includes(file.mime_type);
+};
+
+// 格式化文件大小
+const formatFileSize = (bytes: number) => {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
 // 获取记录类型颜色
-const getRecordTypeColor = (type: string) => {
+const getRecordTypeColor = (type: RecordType) => {
   const colorMap: { [key: string]: string } = {
     general: 'blue',
     laboratory: 'cyan',
@@ -205,7 +343,7 @@ const getRecordTypeColor = (type: string) => {
 };
 
 // 获取记录类型标签
-const getRecordTypeLabel = (type: string) => {
+const getRecordTypeLabel = (type: RecordType) => {
   const labelMap: { [key: string]: string } = {
     general: '一般记录',
     laboratory: '实验室检查',
@@ -222,7 +360,7 @@ const getRecordTypeLabel = (type: string) => {
 };
 
 // 获取可见性颜色
-const getVisibilityColor = (visibility: string) => {
+const getVisibilityColor = (visibility: RecordVisibility) => {
   const colorMap: { [key: string]: string } = {
     private: 'red',
     doctor: 'green',
@@ -233,7 +371,7 @@ const getVisibilityColor = (visibility: string) => {
 };
 
 // 获取可见性标签
-const getVisibilityLabel = (visibility: string) => {
+const getVisibilityLabel = (visibility: RecordVisibility) => {
   const labelMap: { [key: string]: string } = {
     private: '私密',
     doctor: '医生可见',
@@ -243,64 +381,37 @@ const getVisibilityLabel = (visibility: string) => {
   return labelMap[visibility] || visibility;
 };
 
-// 格式化文件大小
-const formatFileSize = (bytes: number) => {
-  if (!bytes) return '0 KB';
-  
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+// 格式化日期
+const formatDate = (dateString: string) => {
+  if (!dateString) return '未设置';
+  return dayjs(dateString).format('YYYY-MM-DD HH:mm:ss');
 };
 
-// 获取文件图标
-const getFileIcon = (fileType: string) => {
-  if (!fileType) return FileUnknownOutlined;
-  
-  const iconMap: { [key: string]: any } = {
-    'doc': FileWordOutlined,
-    'docx': FileWordOutlined,
-    'xls': FileExcelOutlined,
-    'xlsx': FileExcelOutlined,
-    'pdf': FilePdfOutlined,
-    'jpg': FileImageOutlined,
-    'jpeg': FileImageOutlined,
-    'png': FileImageOutlined,
-    'txt': FileTextOutlined,
-  };
-  
-  return iconMap[fileType.toLowerCase()] || FileUnknownOutlined;
+// 关闭详情
+const handleClose = () => {
+  emit('close');
 };
 
-// 下载文件（实际应用中通过调用API获取文件链接）
-const downloadFile = (file: any) => {
-  if (props.record.is_encrypted) {
-    message.warning('记录已加密，请先解密后再下载文件');
-    return;
-  }
-  
-  message.info(`正在请求下载: ${file.file_name}`);
-  // 实际应用中应调用后端API获取文件链接
-  // window.open(getFileDownloadUrl(file.file_path));
-};
+// 组件挂载时初始化数据
+onMounted(() => {
+  initRecordData();
+});
 </script>
 
 <style scoped>
-.data-container {
-  background-color: #f5f5f5;
-  padding: 16px;
-  border-radius: 4px;
-  max-height: 400px;
-  overflow: auto;
+.content-section {
+  margin-bottom: 16px;
 }
 
-.action-footer {
-  margin-top: 24px;
-  text-align: right;
+.content-section h4 {
+  margin-bottom: 8px;
+  font-weight: 500;
 }
 
-.file-description {
-  margin-left: 16px;
-  max-width: 400px;
-  color: rgba(0, 0, 0, 0.45);
+.preview-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
 }
 </style> 

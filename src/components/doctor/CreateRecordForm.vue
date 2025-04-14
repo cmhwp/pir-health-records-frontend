@@ -102,41 +102,19 @@
       <!-- 加密选项 -->
       <a-divider orientation="left">加密选项</a-divider>
       
-      <a-form-item name="encrypt_record" label="加密此记录">
-        <a-switch v-model:checked="formState.encrypt_record" />
+      <a-form-item name="is_encrypted" label="是否加密">
+        <a-switch v-model:checked="isEncrypted" />
       </a-form-item>
       
-      <a-form-item 
-        v-if="formState.encrypt_record" 
-        name="encryption_key" 
-        label="加密密钥"
-        :rules="[{ required: true, message: '启用加密时，密钥必填!' }]"
-      >
-        <a-input-password v-model:value="formState.encryption_key" placeholder="请输入加密密钥" />
+      <a-form-item name="encryption_key" label="加密密钥" v-if="isEncrypted">
+        <a-input-password
+          v-model:value="formState.encryption_key"
+          placeholder="请输入加密密钥，需要妥善保存"
+        />
+        <div class="form-help-text">该密钥将用于加密和解密记录，一旦丢失，记录将无法解密</div>
       </a-form-item>
       
-      <a-form-item 
-        v-if="formState.encrypt_record" 
-        name="confirm_key"
-        label="确认密钥"
-        :rules="[
-          { required: true, message: '请确认加密密钥!' },
-          { validator: validateConfirmKey }
-        ]"
-      >
-        <a-input-password v-model:value="formState.confirm_key" placeholder="请再次输入加密密钥" />
-      </a-form-item>
-      
-      <a-alert
-        v-if="formState.encrypt_record"
-        message="重要提示"
-        description="请妥善保管您的加密密钥，系统不会存储您的密钥。如果密钥丢失，将无法解密此记录！"
-        type="warning"
-        show-icon
-        style="margin-bottom: 16px"
-      />
-      
-      <!-- 表单按钮 -->
+      <!-- 提交按钮 -->
       <a-form-item>
         <a-space>
           <a-button type="primary" html-type="submit" :loading="submitting">创建记录</a-button>
@@ -149,39 +127,43 @@
 
 <script lang="ts" setup>
 import { ref, reactive, onMounted } from 'vue';
-import { message } from 'ant-design-vue';
+import { message, Upload } from 'ant-design-vue';
+import type { FormInstance, UploadProps } from 'ant-design-vue';
 import { InboxOutlined } from '@ant-design/icons-vue';
-import type { FormInstance } from 'ant-design-vue';
-import type { UploadProps } from 'ant-design-vue';
-import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
+import type { Dayjs } from 'dayjs';
+import { getDoctorPatients } from '@/api/doctor';
 import { createEncryptedHealthRecord } from '@/api/doctor';
 import type { CreateEncryptedRecordRequest } from '@/types/doctor';
 import type { RecordType, RecordVisibility } from '@/types/health';
 
-const emit = defineEmits(['success', 'cancel']);
+// 组件事件
+const emit = defineEmits<{
+  (e: 'success'): void;
+  (e: 'cancel'): void;
+}>();
 
 // 表单引用
 const formRef = ref<FormInstance>();
 
-// 表单数据
+// 表单状态
 const formState = reactive({
   title: '',
   record_type: undefined as RecordType | undefined,
   patient_id: undefined as number | undefined,
   record_date: null as Dayjs | null,
   description: '',
-  visibility: 'doctor' as RecordVisibility,
+  visibility: 'private' as RecordVisibility,
   tags: '',
   file_description: '',
-  encrypt_record: false,
   encryption_key: '',
-  confirm_key: '',
 });
 
-// 文件列表
-const fileList = ref<any[]>([]);
+// 其他状态
 const submitting = ref(false);
+const patientsList = ref<{ id: number; name: string }[]>([]);
+const fileList = ref<any[]>([]);
+const isEncrypted = ref(false);
 
 // 选项数据
 const recordTypeOptions = [
@@ -204,9 +186,6 @@ const visibilityOptions = [
   { label: '研究人员可见', value: 'researcher' },
 ];
 
-// 患者列表（模拟数据，实际应从API获取）
-const patientsList = ref<any[]>([]);
-
 // 验证规则
 const rules = {
   title: [{ required: true, message: '请输入记录标题!' }],
@@ -214,85 +193,10 @@ const rules = {
   patient_id: [{ required: true, message: '请选择患者!' }],
 };
 
-// 加载患者列表
-onMounted(() => {
-  loadPatients();
-});
-
-const loadPatients = () => {
-  // 在实际应用中应该从API获取患者列表
-  patientsList.value = [
-    { id: 1, name: '张三' },
-    { id: 2, name: '李四' },
-    { id: 3, name: '王五' }
-  ];
-};
-
-// 处理表单提交
-const handleSubmit = async () => {
-  try {
-    submitting.value = true;
-    
-    // 构建请求数据
-    const recordData: any = {
-      title: formState.title,
-      record_type: formState.record_type,
-      patient_id: formState.patient_id,
-      visibility: formState.visibility,
-    };
-    
-    if (formState.description) {
-      recordData.description = formState.description;
-    }
-    
-    if (formState.record_date) {
-      recordData.record_date = formState.record_date.format('YYYY-MM-DD');
-    }
-    
-    if (formState.tags) {
-      recordData.tags = formState.tags;
-    }
-    
-    const requestData: CreateEncryptedRecordRequest = {
-      record_data: recordData,
-      files: fileList.value.map(file => file.originFileObj),
-    };
-    
-    if (formState.file_description) {
-      requestData.file_description = formState.file_description;
-    }
-    
-    if (formState.encrypt_record && formState.encryption_key) {
-      requestData.encryption_key = formState.encryption_key;
-    }
-    
-    // 调用API创建记录
-    const response = await createEncryptedHealthRecord(requestData);
-    
-    if (response.success) {
-      message.success('健康记录创建成功');
-      emit('success');
-    } else {
-      message.error(response.message || '创建记录失败');
-    }
-  } catch (error: any) {
-    message.error(error.message || '创建记录时发生错误');
-  } finally {
-    submitting.value = false;
-  }
-};
-
-// 处理取消
-const handleCancel = () => {
-  emit('cancel');
-};
-
-// 验证确认密钥
-const validateConfirmKey = (_rule: any, value: string) => {
-  if (value && value !== formState.encryption_key) {
-    return Promise.reject('两次输入的密钥不一致!');
-  }
-  return Promise.resolve();
+// 禁用日期选择
+const disabledDate = (current: Dayjs) => {
+  // 不能选择未来日期
+  return current && current > dayjs().endOf('day');
 };
 
 // 过滤患者选项
@@ -300,31 +204,121 @@ const filterPatientOption = (input: string, option: any) => {
   return option.name.toLowerCase().indexOf(input.toLowerCase()) >= 0;
 };
 
-// 禁用未来日期
-const disabledDate = (current: any) => {
-  return current && current > dayjs().endOf('day');
-};
-
-// 文件上传前检查
+// 文件上传前校验
 const beforeUpload: UploadProps['beforeUpload'] = (file) => {
-  // 在这里可以添加文件类型和大小验证
-  return false; // 阻止自动上传
+  // 允许的文件类型
+  const allowedTypes = [
+    'application/pdf',
+    'image/jpeg',
+    'image/png',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ];
+  
+  // 校验文件类型
+  const isAllowedType = allowedTypes.includes(file.type);
+  if (!isAllowedType) {
+    message.error('仅支持PDF, JPG, PNG, DOC, DOCX, XLS, XLSX格式文件!');
+  }
+  
+  // 校验文件大小，限制为 50MB
+  const isLt50M = file.size / 1024 / 1024 < 50;
+  if (!isLt50M) {
+    message.error('文件必须小于50MB!');
+  }
+  
+  return isAllowedType && isLt50M ? true : Upload.LIST_IGNORE;
 };
 
-// 处理拖拽文件
+// 处理拖拽上传
 const handleDrop = (e: DragEvent) => {
-  // 可以添加拖拽文件的特殊处理
-  console.log('Dropped files', e);
+  console.log('Dropped files', e.dataTransfer?.files);
 };
+
+// 加载患者列表
+const loadPatients = async () => {
+  try {
+    const response = await getDoctorPatients();
+    if (response.success && response.data) {
+      patientsList.value = response.data.patients.map(patient => ({
+        id: patient.id,
+        name: patient.name
+      }));
+    }
+  } catch (error) {
+    console.error('获取患者列表失败:', error);
+    message.error('获取患者列表失败');
+  }
+};
+
+// 提交表单
+const handleSubmit = async () => {
+  submitting.value = true;
+  
+  try {
+    // 构建提交数据
+    const requestData: CreateEncryptedRecordRequest = {
+      record_data: {
+        title: formState.title,
+        record_type: formState.record_type!,
+        patient_id: formState.patient_id!,
+        description: formState.description,
+        visibility: formState.visibility,
+        tags: formState.tags,
+      },
+      files: fileList.value.map(file => file.originFileObj),
+      file_description: formState.file_description,
+    };
+    
+    // 如果有日期，转换格式
+    if (formState.record_date) {
+      requestData.record_data.record_date = formState.record_date.format('YYYY-MM-DD');
+    }
+    
+    // 如果选择加密，添加加密密钥
+    if (isEncrypted.value && formState.encryption_key) {
+      requestData.encryption_key = formState.encryption_key;
+    }
+    
+    // 发送请求
+    const response = await createEncryptedHealthRecord(requestData);
+    
+    if (response.success) {
+      message.success('记录创建成功');
+      // 重置表单
+      formRef.value?.resetFields();
+      fileList.value = [];
+      isEncrypted.value = false;
+      // 触发成功事件
+      emit('success');
+    } else {
+      message.error(response.message || '创建记录失败');
+    }
+  } catch (error: any) {
+    console.error('创建记录失败:', error);
+    message.error(error.message || '创建记录失败');
+  } finally {
+    submitting.value = false;
+  }
+};
+
+// 取消
+const handleCancel = () => {
+  emit('cancel');
+};
+
+// 组件挂载时加载患者列表
+onMounted(() => {
+  loadPatients();
+});
 </script>
 
 <style scoped>
-.ant-upload-drag-icon {
-  margin-bottom: 16px;
-}
-
-.ant-upload-text {
-  font-size: 16px;
-  margin-bottom: 8px;
+.form-help-text {
+  color: #8c8c8c;
+  font-size: 12px;
+  margin-top: 4px;
 }
 </style> 

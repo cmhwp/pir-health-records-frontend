@@ -308,10 +308,10 @@ import type {
   AuditLog
 } from '@/types/doctor';
 import type { RecordType, RecordVisibility } from '@/types/health';
-// Assume these components are created in separate files
-// import CreateRecordForm from './CreateRecordForm.vue';
-// import ViewRecordDetail from './ViewRecordDetail.vue';
-// import EditRecordForm from './EditRecordForm.vue';
+// 导入组件
+import CreateRecordForm from './CreateRecordForm.vue';
+import ViewRecordDetail from './ViewRecordDetail.vue';
+import EditRecordForm from './EditRecordForm.vue';
 
 // Record type options
 const recordTypeOptions = [
@@ -429,7 +429,7 @@ const loadRecords = async () => {
   loading.value = true;
   try {
     const response = await getDoctorRecords(filterParams);
-    if (response.success) {
+    if (response.success && response.data) {
       records.value = response.data.records;
       pagination.total = response.data.pagination.total;
       pagination.pages = response.data.pagination.pages;
@@ -544,7 +544,7 @@ const handleDecryptRecord = async () => {
   decrypting.value = true;
   try {
     const response = await decryptRecord(currentRecord.value.mongo_id, { encryption_key: decryptKey.value });
-    if (response.success) {
+    if (response.success && response.data) {
       message.success('解密成功');
       decryptModalVisible.value = false;
       // 显示解密后的记录
@@ -579,7 +579,7 @@ const verifyCompliance = async () => {
   
   try {
     const response = await verifyRecordCompliance(currentRecord.value.mongo_id, request);
-    if (response.success) {
+    if (response.success && response.data) {
       verificationResult.value = response.data;
       message.success('合规性验证完成');
     } else {
@@ -601,7 +601,7 @@ const showAuditLogs = async (record: any) => {
   
   try {
     const response = await getRecordAuditLogs(record.mongo_id);
-    if (response.success) {
+    if (response.success && response.data) {
       auditLogs.value = response.data.audit_logs;
     } else {
       message.error(response.message || '获取审计日志失败');
