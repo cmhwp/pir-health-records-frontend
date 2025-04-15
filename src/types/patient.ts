@@ -27,6 +27,7 @@ export interface PrescriptionInfo {
   id: number;
   doctor_id: number;
   doctor_name: string;
+  symptoms?: string;
   diagnosis: string;
   instructions: string;
   status: PrescriptionStatus;
@@ -113,9 +114,7 @@ export interface RequestPrescriptionMedication {
 export interface RequestPrescriptionRequest {
   doctor_id: number;
   symptoms: string;
-  medications: RequestPrescriptionMedication[];
-  diagnosis?: string;
-  instructions?: string;
+  medications?: RequestPrescriptionMedication[];
   notes?: string;
 }
 

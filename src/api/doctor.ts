@@ -24,7 +24,10 @@ import type {
   PatientStatisticsResponse,
   DiseaseStatisticsResponse,
   GetComplianceStatsResponse,
-  Prescription
+  Prescription,
+  PendingPrescriptionsResponse,
+  ProcessPrescriptionRequest,
+  ProcessPrescriptionResponse
 } from '@/types/doctor';
 import type { HealthRecord } from '@/types/health';
 
@@ -222,4 +225,23 @@ export const batchVerifyCompliance = async (
   recordIds: number[]
 ): Promise<ApiResponse<{ results: Record<number, boolean> }>> => {
   return request.post(`${API_PATH}/records/batch-verify`, { record_ids: recordIds });
+};
+
+/**
+ * 获取待处理的处方申请
+ */
+export const getPendingPrescriptions = async (
+  params?: { page?: number; per_page?: number }
+): Promise<ApiResponse<PendingPrescriptionsResponse>> => {
+  return request.get(`${API_PATH}/prescriptions/pending`, { params });
+};
+
+/**
+ * 处理处方申请（批准或拒绝）
+ */
+export const processPrescriptionRequest = async (
+  prescriptionId: number,
+  data: ProcessPrescriptionRequest
+): Promise<ApiResponse<ProcessPrescriptionResponse>> => {
+  return request.put(`${API_PATH}/prescriptions/${prescriptionId}/process`, data);
 }; 

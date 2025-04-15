@@ -245,11 +245,17 @@ export interface Prescription {
   patient_id: number;
   patient_name: string;
   diagnosis: string;
+  symptoms?: string;
   instructions?: string;
   status: PrescriptionStatus;
   items: PrescriptionItem[];
   created_at: string;
   valid_until?: string;
+  patient_info?: {
+    gender?: string;
+    date_of_birth?: string;
+    allergies?: string;
+  };
 }
 
 export interface GetPrescriptionsResponse {
@@ -283,6 +289,43 @@ export interface UpdatePrescriptionRequest {
   diagnosis?: string;
   instructions?: string;
   valid_until?: string;
+}
+
+// 处理处方申请接口
+export interface ProcessPrescriptionRequest {
+  action: 'approve' | 'reject';
+  reason?: string;
+  diagnosis?: string;
+  instructions?: string;
+  valid_days?: number;
+  replace_items?: boolean;
+  items?: {
+    id?: number;
+    medicine_name: string;
+    dosage: string;
+    frequency?: string;
+    duration?: string;
+    notes?: string;
+  }[];
+}
+
+// 处方申请处理响应
+export interface ProcessPrescriptionResponse {
+  prescription_id: number;
+  status: PrescriptionStatus;
+}
+
+// 待处理处方响应
+export interface PendingPrescriptionsResponse {
+  prescriptions: Prescription[];
+  pagination: {
+    total: number;
+    pages: number;
+    page: number;
+    per_page: number;
+    has_next: boolean;
+    has_prev: boolean;
+  };
 }
 
 // 统计数据接口

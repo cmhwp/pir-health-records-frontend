@@ -67,6 +67,14 @@
                 </span>
               </template>
               
+              <template v-if="column.key === 'items_count'">
+                <span>{{ record.items ? record.items.length : 0 }}</span>
+              </template>
+              
+              <template v-if="column.key === 'created_at'">
+                <span>{{ formatDate(record.created_at) }}</span>
+              </template>
+              
               <template v-if="column.key === 'action'">
                 <a-button type="link" size="small" @click="viewPrescription(record)">
                   查看详情
@@ -94,6 +102,9 @@
             <a-descriptions-item label="诊断" :span="3">
               {{ currentPrescription.diagnosis }}
             </a-descriptions-item>
+            <a-descriptions-item v-if="currentPrescription.symptoms" label="症状描述" :span="3">
+              {{ currentPrescription.symptoms }}
+            </a-descriptions-item>
             <a-descriptions-item label="状态" :span="1">
               <a-tag :color="getStatusColor(currentPrescription.status)">
                 {{ getStatusText(currentPrescription.status) }}
@@ -116,6 +127,7 @@
             bordered
             :data-source="currentPrescription.items"
             size="small"
+            class="prescription-list"
           >
             <template #renderItem="{ item }">
               <a-list-item>
@@ -202,94 +214,73 @@
           ></a-textarea>
         </a-form-item>
         
-        <a-form-item label="需要的药品">
-          <a-button type="dashed" block @click="addMedication" style="margin-bottom: 8px">
-            <plus-outlined /> 添加药品
-          </a-button>
-          
-          <div 
-            v-for="(med, index) in requestForm.medications" 
-            :key="index"
-            style="margin-bottom: 16px; padding: 16px; border: 1px dashed #d9d9d9; border-radius: 4px"
-          >
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px">
-              <div style="font-weight: bold">药品 #{{ index + 1 }}</div>
+        <!-- 新增药品信息部分 -->
+        <a-divider>药品信息（选填）</a-divider>
+        
+        <div v-for="(item, index) in requestForm.medications" :key="index" class="medication-item">
+          <a-row :gutter="16" align="middle">
+            <a-col :span="6">
+              <a-form-item 
+                :label="`药品${index + 1}`" 
+                style="margin-bottom: 0;"
+              >
+                <a-input v-model:value="item.name" placeholder="药品名称" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="5">
+              <a-form-item style="margin-bottom: 0;" label="用量">
+                <a-input v-model:value="item.dosage" placeholder="用量" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="5">
+              <a-form-item style="margin-bottom: 0;" label="频次">
+                <a-input v-model:value="item.frequency" placeholder="频次" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="5">
+              <a-form-item style="margin-bottom: 0;" label="疗程">
+                <a-input v-model:value="item.duration" placeholder="疗程" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="2" style="text-align: right">
               <a-button 
+                type="text" 
                 danger 
-                type="link" 
-                size="small" 
                 @click="removeMedication(index)"
               >
-                删除
+                <template #icon><delete-outlined /></template>
               </a-button>
-            </div>
-            
-            <a-row :gutter="16">
-              <a-col :span="24">
-                <a-form-item 
-                  :name="['medications', index, 'name']" 
-                  label="药品名称"
-                  :rules="[{ required: true, message: '请输入药品名称' }]"
-                >
-                  <a-input 
-                    v-model:value="med.name" 
-                    placeholder="药品名称"
-                  ></a-input>
-                </a-form-item>
-              </a-col>
-            </a-row>
-            
-            <a-row :gutter="16">
-              <a-col :span="12">
-                <a-form-item :name="['medications', index, 'dosage']" label="剂量">
-                  <a-input 
-                    v-model:value="med.dosage" 
-                    placeholder="例如:5mg、10ml等"
-                  ></a-input>
-                </a-form-item>
-              </a-col>
-              <a-col :span="12">
-                <a-form-item :name="['medications', index, 'frequency']" label="服用频率">
-                  <a-input 
-                    v-model:value="med.frequency" 
-                    placeholder="例如:每日三次、饭后等"
-                  ></a-input>
-                </a-form-item>
-              </a-col>
-            </a-row>
-            
-            <a-row :gutter="16">
-              <a-col :span="12">
-                <a-form-item :name="['medications', index, 'duration']" label="用药时长">
-                  <a-input 
-                    v-model:value="med.duration" 
-                    placeholder="例如:7天、2周等"
-                  ></a-input>
-                </a-form-item>
-              </a-col>
-              <a-col :span="12">
-                <a-form-item :name="['medications', index, 'notes']" label="备注">
-                  <a-input 
-                    v-model:value="med.notes" 
-                    placeholder="药品相关备注"
-                  ></a-input>
-                </a-form-item>
-              </a-col>
-            </a-row>
-          </div>
-          
-          <div v-if="requestForm.medications.length === 0" style="text-align: center; color: #999; padding: 16px 0">
-            请添加您需要的药品
-          </div>
-        </a-form-item>
+            </a-col>
+          </a-row>
+          <a-row style="margin-top: 8px;">
+            <a-col :span="24">
+              <a-form-item style="margin-bottom: 0;" label="备注">
+                <a-input v-model:value="item.notes" placeholder="药品备注说明" />
+              </a-form-item>
+            </a-col>
+          </a-row>
+        </div>
+        
+        <a-button type="dashed" block @click="addMedication" class="add-medication-btn">
+          <plus-outlined /> 添加药品
+        </a-button>
         
         <a-form-item label="其他备注" name="notes">
           <a-textarea
             v-model:value="requestForm.notes"
             placeholder="其他备注或说明"
-            :rows="2"
+            :rows="3"
           ></a-textarea>
         </a-form-item>
+        
+        <div style="margin-top: 16px;">
+          <a-alert
+            message="医生将根据您的症状描述为您开具合适的处方"
+            description="请提供准确的症状描述和药品需求，以便医生能够开具合适的处方"
+            type="info"
+            show-icon
+          />
+        </div>
       </a-form>
     </a-modal>
   </div>
@@ -301,15 +292,16 @@ import { message } from 'ant-design-vue';
 import dayjs from 'dayjs';
 import { getPatientPrescriptions, getDoctors, requestPrescription } from '@/api/patient';
 import type { PrescriptionInfo, PrescriptionStatus, Doctor, RequestPrescriptionRequest, RequestPrescriptionMedication } from '@/types/patient';
-import { PlusOutlined } from '@ant-design/icons-vue';
+import { PlusOutlined, DeleteOutlined } from '@ant-design/icons-vue';
 
 // 状态变量
 const loading = ref(false);
-const activeTabKey = ref('ACTIVE');
+const activeTabKey = ref('ALL');
 const prescriptions = ref<PrescriptionInfo[]>([]);
 const drawerVisible = ref(false);
 const currentPrescription = ref<PrescriptionInfo | null>(null);
 const statusCounts = ref<Record<string, number>>({
+  'ALL': 0,
   'PENDING': 0,
   'ACTIVE': 0,
   'COMPLETED': 0,
@@ -319,7 +311,7 @@ const statusCounts = ref<Record<string, number>>({
 
 // 筛选条件
 const filters = reactive({
-  status: 'ACTIVE' as PrescriptionStatus | string,
+  status: 'ALL' as PrescriptionStatus | string,
   sort_by: 'created_at',
   sort_order: 'desc' as 'asc' | 'desc'
 });
@@ -349,8 +341,7 @@ const columns = [
   {
     title: '药品数量',
     key: 'items_count',
-    align: 'center' as const,
-    render: (_: any, record: PrescriptionInfo) => record.items.length
+    align: 'center' as const
   },
   {
     title: '状态',
@@ -361,8 +352,7 @@ const columns = [
     title: '创建时间',
     dataIndex: 'created_at',
     key: 'created_at',
-    sorter: true,
-    render: (text: string) => formatDate(text)
+    sorter: true
   },
   {
     title: '有效期至',
@@ -388,38 +378,28 @@ const isExpired = (dateStr: string) => {
 
 // 获取状态颜色
 const getStatusColor = (status: PrescriptionStatus | string) => {
-  switch (status) {
-    case 'PENDING':
-      return 'yellow';
-    case 'ACTIVE':
-      return 'green';
-    case 'COMPLETED':
-      return 'blue';
-    case 'EXPIRED':
-      return 'orange';
-    case 'REVOKED':
-      return 'red';
-    default:
-      return 'default';
-  }
+  const colorMap: Record<string, string> = {
+    'ALL': 'purple',
+    'PENDING': 'yellow',
+    'ACTIVE': 'green',
+    'COMPLETED': 'blue',
+    'EXPIRED': 'orange',
+    'REVOKED': 'red'
+  };
+  return colorMap[status] || 'default';
 };
 
 // 获取状态文本
 const getStatusText = (status: PrescriptionStatus | string) => {
-  switch (status) { 
-    case 'PENDING':
-      return '待确认';
-    case 'ACTIVE':
-      return '有效';
-    case 'COMPLETED':
-      return '已完成';
-    case 'EXPIRED':
-      return '已过期';
-    case 'REVOKED':
-      return '已撤销';
-    default:
-      return '未知状态';
-  }
+  const textMap: Record<string, string> = {
+    'ALL': '全部处方',
+    'PENDING': '待确认',
+    'ACTIVE': '有效',
+    'COMPLETED': '已完成',
+    'EXPIRED': '已过期',
+    'REVOKED': '已撤销'
+  };
+  return textMap[status] || status;
 };
 
 // 查看处方详情
@@ -461,7 +441,7 @@ const fetchPrescriptions = async () => {
       sort_by: filters.sort_by,
       sort_order: filters.sort_order
     });
-    
+    console.log(response);
     if (response.success && response.data) {
       prescriptions.value = response.data.prescriptions;
       pagination.total = response.data.pagination.total;
@@ -470,9 +450,9 @@ const fetchPrescriptions = async () => {
       statusCounts.value = response.data.status_counts;
       
       // 确保"全部"选项的计数是所有状态的总和
-      if (!statusCounts.value['ALL']) {
-        statusCounts.value['ALL'] = Object.values(response.data.status_counts).reduce((sum, count) => sum + count, 0);
-      }
+      statusCounts.value['ALL'] = Object.entries(response.data.status_counts)
+        .filter(([key]) => key !== 'ALL')
+        .reduce((sum, [_, count]) => sum + (count as number), 0);
     } else {
       message.error(response.message || '获取处方列表失败');
     }
@@ -515,8 +495,30 @@ const requestForm = reactive<RequestPrescriptionRequest>({
 const initRequestForm = () => {
   requestForm.doctor_id = 0;
   requestForm.symptoms = '';
-  requestForm.medications = [];
+  requestForm.medications = [{
+    name: '',
+    dosage: '',
+    frequency: '',
+    duration: '',
+    notes: ''
+  }];
   requestForm.notes = '';
+};
+
+// 添加药品项
+const addMedication = () => {
+  requestForm.medications!.push({
+    name: '',
+    dosage: '',
+    frequency: '',
+    duration: '',
+    notes: ''
+  });
+};
+
+// 移除药品项
+const removeMedication = (index: number) => {
+  requestForm.medications!.splice(index, 1);
 };
 
 // 显示申请处方模态框
@@ -526,22 +528,6 @@ const showRequestPrescriptionModal = async () => {
   
   // 加载医生列表
   await fetchDoctors();
-};
-
-// 添加药品
-const addMedication = () => {
-  requestForm.medications.push({
-    name: '',
-    dosage: '',
-    frequency: '',
-    duration: '',
-    notes: ''
-  });
-};
-
-// 移除药品
-const removeMedication = (index: number) => {
-  requestForm.medications.splice(index, 1);
 };
 
 // 获取医生列表
@@ -582,17 +568,9 @@ const handleRequestPrescription = async () => {
     return;
   }
   
-  if (requestForm.medications.length === 0) {
-    message.error('请添加至少一种药品');
-    return;
-  }
-  
-  // 验证每个药品是否都有名称
-  for (let i = 0; i < requestForm.medications.length; i++) {
-    if (!requestForm.medications[i].name.trim()) {
-      message.error(`请输入第 ${i+1} 个药品的名称`);
-      return;
-    }
+  // 过滤掉空药品
+  if (requestForm.medications && requestForm.medications.length > 0) {
+    requestForm.medications = requestForm.medications.filter(item => item.name.trim());
   }
   
   submitting.value = true;
@@ -619,19 +597,154 @@ const handleRequestPrescription = async () => {
 <style scoped>
 .prescriptions-content {
   width: 100%;
+  padding: 0 8px;
 }
 
 .prescriptions-content h1 {
   margin-bottom: 24px;
+  font-size: 24px;
+  font-weight: 500;
+  color: #262626;
 }
 
 .filter-form {
   margin-bottom: 16px;
 }
 
+/* 处方项样式 */
 .prescription-item-label {
-  color: #999;
+  color: #8c8c8c;
   display: inline-block;
   width: 80px;
+  font-size: 14px;
+}
+
+/* 处方列表样式 */
+.prescription-list {
+  margin-bottom: 24px;
+}
+
+:deep(.prescription-list .ant-list-item) {
+  padding: 12px 16px;
+}
+
+:deep(.prescription-list .ant-list-item:hover) {
+  background-color: #f5f5f5;
+}
+
+/* 处方详情抽屉样式 */
+:deep(.ant-descriptions-title) {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+
+:deep(.ant-drawer-body) {
+  padding: 24px;
+}
+
+:deep(.ant-descriptions-item-label) {
+  width: 100px;
+  color: #595959;
+  font-weight: 500;
+}
+
+:deep(.ant-divider-inner-text) {
+  font-size: 15px;
+  font-weight: 500;
+  color: #262626;
+}
+
+/* 表单相关样式 */
+:deep(.ant-form-item-label > label) {
+  font-weight: 500;
+  color: #262626;
+}
+
+:deep(.ant-alert) {
+  margin-top: 16px;
+  border-radius: 4px;
+}
+
+/* 药品项目样式 */
+.medication-item {
+  background-color: #fafafa;
+  padding: 16px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  border: 1px solid #f0f0f0;
+}
+
+.medication-item:hover {
+  border-color: #d9d9d9;
+}
+
+.medication-item :deep(.ant-form-item) {
+  margin-bottom: 0;
+}
+
+.medication-item :deep(.ant-form-item-label) {
+  padding-bottom: 4px;
+}
+
+.medication-item :deep(.ant-form-item-label > label) {
+  color: #595959;
+  font-size: 13px;
+  height: 28px;
+}
+
+.medication-item :deep(.ant-row) {
+  flex-wrap: nowrap;
+}
+
+/* 添加药品按钮 */
+.add-medication-btn {
+  margin-bottom: 24px;
+  height: 40px;
+  font-size: 14px;
+  background-color: #f9f9f9;
+  transition: all 0.3s;
+}
+
+.add-medication-btn:hover {
+  background-color: #f0f0f0;
+}
+
+/* 按钮样式 */
+:deep(.ant-btn-dashed) {
+  border-color: #40a9ff;
+  color: #40a9ff;
+}
+
+:deep(.ant-btn-dashed:hover) {
+  border-color: #1890ff;
+  color: #1890ff;
+}
+
+/* 表格样式 */
+:deep(.ant-table-thead > tr > th) {
+  background-color: #f5f5f5;
+  font-weight: 500;
+}
+
+:deep(.ant-table-row:hover) {
+  background-color: #e6f7ff;
+}
+
+/* 卡片样式 */
+:deep(.ant-card) {
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+:deep(.ant-card-body) {
+  padding: 20px;
+}
+
+/* 标签样式 */
+:deep(.ant-tag) {
+  border-radius: 4px;
+  padding: 0 8px;
+  font-weight: 500;
 }
 </style> 
