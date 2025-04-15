@@ -217,60 +217,6 @@ export interface PatientDetailsResponse {
   total_records: number;
 }
 
-// 预约相关接口
-export type AppointmentStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
-
-export interface GetAppointmentsParams {
-  page?: number;
-  per_page?: number;
-  start_date?: string;
-  end_date?: string;
-  date_filter?: 'all' | 'today' | 'upcoming' | 'past';
-  status?: AppointmentStatus;
-  sort_by?: string;
-  sort_order?: 'asc' | 'desc';
-}
-
-export interface Appointment {
-  id: number;
-  patient_id: number;
-  patient_name: string;
-  appointment_time: string;
-  duration: number;
-  purpose: string;
-  status: AppointmentStatus;
-  notes?: string;
-  created_at: string;
-}
-
-export interface GetAppointmentsResponse {
-  appointments: Appointment[];
-  pagination: {
-    total: number;
-    pages: number;
-    page: number;
-    per_page: number;
-    has_next: boolean;
-    has_prev: boolean;
-  };
-}
-
-export interface CreateAppointmentRequest {
-  patient_id: number;
-  appointment_time: string;
-  duration: number;
-  purpose: string;
-  notes?: string;
-}
-
-export interface UpdateAppointmentRequest {
-  appointment_time?: string;
-  duration?: number;
-  purpose?: string;
-  notes?: string;
-  status?: AppointmentStatus;
-}
-
 // 处方相关接口
 export type PrescriptionStatus = 'ACTIVE' | 'COMPLETED' | 'EXPIRED' | 'REVOKED';
 

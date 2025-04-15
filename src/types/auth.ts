@@ -17,12 +17,19 @@ export interface User {
   created_at: string;
   updated_at: string;
   last_login_at?: string;
+  last_login_formatted?: string;
+  statistics?: {
+    records_count: number;
+    prescriptions_count: number;
+  };
+  patient_info?: PatientInfo;
 }
 
 export interface PatientInfo {
   id?: number;
   user_id: number;
   gender?: string;
+  date_of_birth?: string | any;
   address?: string;
   emergency_contact?: string;
   emergency_phone?: string;

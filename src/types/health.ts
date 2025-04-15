@@ -420,13 +420,30 @@ export interface SecureDeleteRequest {
 
 export interface HealthStatisticsResponse {
   record_types: Record<string, number>;
-  monthly_records: Record<string, number>;
+  time_stats: Array<{
+    date?: string;
+    year?: number;
+    month?: number;
+    count: number;
+  }>;
   vital_signs: Record<string, {
     values: number[];
     dates: string[];
     unit: string;
   }>;
   medications: Record<string, number>;
+  doctor_stats: Array<{
+    id: number;
+    name: string;
+    count: number;
+    hospital?: string;
+    department?: string;
+    specialty?: string;
+  }>;
+  prescription_stats: Record<string, number>;
+  appointment_stats: Record<string, number>;
+  total_records: number;
+  total_doctors: number;
 }
 
 export interface BatchUpdateVisibilityRequest {

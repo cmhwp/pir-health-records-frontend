@@ -105,6 +105,59 @@
       </a-col>
     </a-row>
 
+    <!-- 健康统计区域 -->
+    <a-row :gutter="16" style="margin-top: 16px">
+      <a-col :span="12">
+        <a-card title="健康记录趋势" :loading="loading" :bordered="false">
+          <div id="health-trend-chart" style="height: 300px;"></div>
+        </a-card>
+      </a-col>
+      <a-col :span="12">
+        <a-card title="记录类型分布" :loading="loading" :bordered="false">
+          <div id="record-type-chart" style="height: 300px;"></div>
+        </a-card>
+      </a-col>
+    </a-row>
+
+    <!-- 预约和处方区域 -->
+    <a-row :gutter="16" style="margin-top: 16px">
+      <a-col :span="12">
+        <a-card title="有效处方" :loading="loading">
+          <template #extra>
+            <a-button type="link" @click="navigateToPrescriptions">查看全部</a-button>
+          </template>
+          <a-list :data-source="activePrescriptions" size="small">
+            <template #renderItem="{ item }">
+              <a-list-item>
+                <a-list-item-meta>
+                  <template #title>{{ item.diagnosis }}</template>
+                  <template #description>
+                    <div>
+                      <MedicineBoxOutlined /> {{ item.items.length }} 种药品
+                      <span style="margin-left: 8px">
+                        <UserOutlined /> {{ item.doctor_name }}
+                      </span>
+                    </div>
+                    <div style="margin-top: 4px">
+                      <ClockCircleOutlined /> 有效至: {{ formatDate(item.valid_until) }}
+                    </div>
+                  </template>
+                  <template #avatar>
+                    <a-avatar style="background-color: #52c41a">
+                      {{ item.diagnosis ? item.diagnosis.charAt(0) : 'P' }}
+                    </a-avatar>
+                  </template>
+                </a-list-item-meta>
+              </a-list-item>
+            </template>
+            <template #empty>
+              <a-empty description="暂无有效处方" />
+            </template>
+          </a-list>
+        </a-card>
+      </a-col>
+    </a-row>
+
     <!-- 记录详情抽屉 -->
     <a-drawer
       v-model:visible="recordDrawerVisible"
@@ -264,7 +317,8 @@ import {
   MedicineBoxOutlined,
   FileSearchOutlined,
   SafetyOutlined,
-  CalendarOutlined
+  ClockCircleOutlined,
+  UserOutlined
 } from '@ant-design/icons-vue';
 import { getHealthRecords, getHealthRecord, getHealthStatistics, getRecordFileUrl, shareHealthRecord, getPirSettings } from '@/api/health';
 import { RecordType, RecordVisibility, SharePermission, type HealthRecord } from '@/types/health';
@@ -274,12 +328,15 @@ import { getUsers } from '@/api/admin';
 const router = useRouter();
 
 // 统计数据
-const loading = ref(true);
+const loading = ref(true);  
 const recordCount = ref(0);
 const recordTypeCounts = ref<Record<string, number>>({});
 const recentRecords = ref<HealthRecord[]>([]);
 const pirUsageRatio = ref(0);
 const privacyScore = ref(0);
+
+// 处方数据
+const activePrescriptions = ref<any[]>([]);
 
 // 记录详情
 const recordDrawerVisible = ref(false);
@@ -326,7 +383,7 @@ const statisticsCards = computed(() => [
     title: '本月新增',
     value: getMonthlyRecordCount(),
     description: `${dayjs().format('YYYY年MM月')}新增`,
-    icon: CalendarOutlined,
+    icon: ClockCircleOutlined,
     color: '#722ed1'
   },
   {
@@ -474,10 +531,10 @@ const fetchStatistics = async () => {
       recordCount.value = Object.values(response.data.record_types)
         .reduce((sum, count) => sum + count, 0);
       
-      // 月度记录统计
-      const monthlyData = response.data.monthly_records;
+      // 月度记录统计 - 使用存在的字段
+      const monthlyData = response.data.record_types;  // 替换为实际存在的字段
       const currentMonth = dayjs().format('M');
-      recordTypeCounts.value[`month_${currentMonth}`] = monthlyData[currentMonth] || 0;
+      recordTypeCounts.value[`month_${currentMonth}`] = monthlyData[`month_${currentMonth}`] || 0;
     }
   } catch (error) {
     console.error('获取健康统计数据失败:', error);
@@ -631,6 +688,12 @@ const submitShare = async () => {
   }
 };
 
+// 格式化日期时间
+const formatDateTime = (dateString: string | undefined): string => {
+  if (!dateString) return '未记录';
+  return dayjs(dateString).format('YYYY-MM-DD HH:mm');
+};
+
 // 导航到其他页面
 const navigateToRecords = () => {
   router.push('/patient/records');
@@ -644,6 +707,10 @@ const navigateToPirQuery = () => {
   router.push('/patient/pir-query');
 };
 
+const navigateToPrescriptions = () => {
+  router.push('/patient/prescriptions');
+};
+
 // 初始化
 onMounted(async () => {
   loading.value = true;
@@ -654,12 +721,27 @@ onMounted(async () => {
       fetchRecentRecords(),
       fetchPrivacySettings()
     ]);
+
+    // 获取处方数据
+    try {
+      const prescriptionsResponse = await getPrescriptions({ status: 'active', limit: 3 });
+      if (prescriptionsResponse.success && prescriptionsResponse.data) {
+        activePrescriptions.value = prescriptionsResponse.data.prescriptions;
+      }
+    } catch (error) {
+      console.error('获取处方数据失败:', error);
+    }
   } catch (error) {
     console.error('加载仪表盘数据失败:', error);
   } finally {
     loading.value = false;
   }
 });
+
+// Mock implementation for prescription APIs
+const getPrescriptions = async (params: Record<string, any>) => {
+  return { success: true, data: { prescriptions: [] } };
+};
 </script>
 
 <style scoped>

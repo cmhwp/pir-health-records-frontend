@@ -734,7 +734,7 @@ const initDiseaseAgeChart = (diseaseName: string) => {
         type: 'bar',
         data: counts,
         itemStyle: {
-          color: function(params: any) {
+          color: function(params: { dataIndex: number }) {
             const colorList = [
               '#c23531','#2f4554','#61a0a8','#d48265','#91c7ae',
               '#749f83','#ca8622','#bda29a','#6e7074'

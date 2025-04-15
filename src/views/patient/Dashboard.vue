@@ -31,6 +31,14 @@
           <team-outlined />
           <span>共享记录</span>
         </a-menu-item>
+        <a-menu-item key="prescriptions">
+          <medicine-box-outlined />
+          <span>我的处方</span>
+        </a-menu-item>
+        <a-menu-item key="doctors">
+          <user-outlined />
+          <span>医生列表</span>
+        </a-menu-item>
         <a-menu-item key="pir-query">
           <safety-outlined />
           <span>隐私查询</span>
@@ -162,7 +170,6 @@
                     <notification-outlined v-else-if="item.type === 'system'" style="font-size: 20px" />
                     <share-alt-outlined v-else-if="item.type === 'record_shared'" style="font-size: 20px" />
                     <file-sync-outlined v-else-if="item.type === 'record_updated'" style="font-size: 20px" />
-                    <calendar-outlined v-else-if="item.type === 'appointment'" style="font-size: 20px" />
                     <info-circle-outlined v-else style="font-size: 20px" />
                   </a-badge>
                 </template>
@@ -207,10 +214,10 @@ import {
   NotificationOutlined,
   ShareAltOutlined,
   FileSyncOutlined,
-  CalendarOutlined,
   InfoCircleOutlined,
   CheckOutlined,
-  DeleteOutlined
+  DeleteOutlined,
+  MedicineBoxOutlined
 } from '@ant-design/icons-vue';
 import { getNotifications, getNotificationCount, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification as deleteNotificationApi } from '@/api/notifications';
 import type { Notification } from '@/types/notifications';
@@ -282,6 +289,12 @@ const handleMenuSelect = ({ key }: { key: string }) => {
       break;
     case 'shared':
       router.push('/patient/shared');
+      break;
+    case 'prescriptions':
+      router.push('/patient/prescriptions');
+      break;
+    case 'doctors':
+      router.push('/patient/doctors');
       break;
     case 'pir-query':
       router.push('/patient/pir-query');

@@ -94,6 +94,18 @@ const routes: Array<RouteRecordRaw> = [
         meta: { requiresAuth: true, role: 'patient', title: '查询历史' }
       },
       {
+        path: 'prescriptions',
+        name: 'PatientPrescriptions',
+        component: () => import('@/components/patient/PrescriptionsContent.vue'),
+        meta: { requiresAuth: true, role: 'patient', title: '我的处方' }
+      },
+      {
+        path: 'doctors',
+        name: 'PatientDoctors',
+        component: () => import('@/components/patient/DoctorsContent.vue'),
+        meta: { requiresAuth: true, role: 'patient', title: '医生列表' }
+      },
+      {
         path: 'profile',
         name: 'Profile',
         component: () => import('@/views/auth/Profile.vue'),
@@ -119,12 +131,6 @@ const routes: Array<RouteRecordRaw> = [
         name: 'DoctorPatients',
         component: () => import('@/components/doctor/PatientsContent.vue'),
         meta: { requiresAuth: true, role: 'doctor', title: '患者管理' }
-      },
-      {
-        path: 'appointments',
-        name: 'DoctorAppointments',
-        component: () => import('@/components/doctor/AppointmentsContent.vue'),
-        meta: { requiresAuth: true, role: 'doctor', title: '预约管理' }
       },
       {
         path: 'prescriptions',

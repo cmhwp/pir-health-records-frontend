@@ -17,10 +17,6 @@ import type {
   UpdateDoctorRecordRequest,
   VerifyComplianceRequest,
   VerifyComplianceResponse,
-  GetAppointmentsParams,
-  GetAppointmentsResponse,
-  CreateAppointmentRequest,
-  UpdateAppointmentRequest,
   GetPrescriptionsParams,
   GetPrescriptionsResponse,
   CreatePrescriptionRequest,
@@ -149,43 +145,6 @@ export const getPatientDetails = async (
   patientId: number
 ): Promise<ApiResponse<PatientDetailsResponse>> => {
   return request.get(`${API_PATH}/patients/${patientId}`);
-};
-
-/**
- * 获取医生的预约列表
- */
-export const getDoctorAppointments = async (
-  params?: GetAppointmentsParams
-): Promise<ApiResponse<GetAppointmentsResponse>> => {
-  return request.get(`${API_PATH}/appointments`, { params });
-};
-
-/**
- * 创建新预约
- */
-export const createAppointment = async (
-  data: CreateAppointmentRequest
-): Promise<ApiResponse<{ appointment_id: number }>> => {
-  return request.post(`${API_PATH}/appointments`, data);
-};
-
-/**
- * 更新预约信息
- */
-export const updateAppointment = async (
-  appointmentId: number,
-  data: UpdateAppointmentRequest
-): Promise<ApiResponse<{ appointment_id: number }>> => {
-  return request.put(`${API_PATH}/appointments/${appointmentId}`, data);
-};
-
-/**
- * 取消预约（实际是更新状态为CANCELLED的快捷方法）
- */
-export const cancelAppointment = async (
-  appointmentId: number
-): Promise<ApiResponse<{ appointment_id: number }>> => {
-  return updateAppointment(appointmentId, { status: 'CANCELLED' });
 };
 
 /**

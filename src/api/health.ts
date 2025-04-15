@@ -116,11 +116,21 @@ export const getRecordFileUrl = (filename: string): string => {
  * 获取健康统计数据
  */
 export const getHealthStatistics = async (
+  startDate?: string,
+  endDate?: string,
   anonymous: boolean = false
 ): Promise<ApiResponse<HealthStatisticsResponse>> => {
-  return request.get(`${API_PATH}/statistics`, { 
-    params: { anonymous }
-  });
+  const params: any = { anonymous };
+  
+  if (startDate) {
+    params.start_date = startDate;
+  }
+  
+  if (endDate) {
+    params.end_date = endDate;
+  }
+  
+  return request.get(`${API_PATH}/statistics`, { params });
 };
 
 /**
