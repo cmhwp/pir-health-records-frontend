@@ -665,9 +665,9 @@ const submitShare = async () => {
   try {
     const values = await shareFormRef.value.validateFields();
     const response = await shareHealthRecord(currentRecord.value._id, {
-      shared_with: values.shared_with,
+      share_with_id: values.share_with_id,
       permission: values.permission,
-      expires_days: values.expires_days === 0 ? undefined : values.expires_days
+      expiry_days: values.expiry_days === 0 ? undefined : values.expiry_days
     });
     
     if (response.success) {

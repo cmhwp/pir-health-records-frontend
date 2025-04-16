@@ -27,6 +27,14 @@
           <team-outlined />
           <span>用户管理</span>
         </a-menu-item>
+        <a-menu-item key="institutions">
+          <bank-outlined />
+          <span>医疗机构管理</span>
+        </a-menu-item>
+        <a-menu-item key="record-types">
+          <tags-outlined />
+          <span>记录类型管理</span>
+        </a-menu-item>
         <a-sub-menu key="data-management">
           <template #title>
             <span>
@@ -130,7 +138,9 @@ import {
   MenuFoldOutlined,
   LogoutOutlined,
   DatabaseOutlined,
-  BarChartOutlined
+  BarChartOutlined,
+  BankOutlined,
+  TagsOutlined
 } from '@ant-design/icons-vue';
 import { getAdminDashboard } from '@/api/admin';
 import { useUserStore } from '@/store/user';
@@ -155,9 +165,11 @@ const currentPageTitle = computed(() => {
     case 'system-logs': return '系统日志';
     case 'users': return '用户管理';
     case 'batch-records': return '批量管理记录';
-    case 'export-data': return '导出数据';
+    case 'export-data': return '导出数据';  
     case 'settings': return '系统设置';
     case 'user-activity': return '用户活动分析';
+    case 'institutions': return '医疗机构管理';
+    case 'record-types': return '记录类型管理';
     case 'profile': return '个人资料';
     default: return '系统管理';
   }
@@ -210,11 +222,15 @@ const setInitialSelectedKey = () => {
     selectedKeys.value = ['settings'];
   } else if (path.includes('/admin/user-activity')) {
     selectedKeys.value = ['user-activity'];
+  } else if (path.includes('/admin/institutions')) {
+    selectedKeys.value = ['institutions'];
+  } else if (path.includes('/admin/record-types')) {
+    selectedKeys.value = ['record-types'];
   } else if (path.includes('/admin/profile')) {
     selectedKeys.value = ['profile'];
   }
 };
-
+  
 // 监听路由变化，更新选中的菜单项
 watch(
   () => route.path,

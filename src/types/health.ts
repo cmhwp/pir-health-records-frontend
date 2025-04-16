@@ -162,7 +162,7 @@ export interface AdvancedSearchRequest {
   };
   record_types?: string[];
   institutions?: string[];
-  tags?: string[];
+  tags?: string;
   keywords?: string;
   sort?: {
     field: 'record_date' | 'created_at' | 'title';
@@ -179,9 +179,9 @@ export interface AdvancedSearchResponse {
 }
 
 export interface ShareRecordRequest {
-  shared_with: number;
+  share_with_id: number;
   permission?: SharePermission;
-  expires_days?: number;
+  expiry_days?: number;
 }
 
 export interface SharedRecordInfo {
@@ -194,6 +194,7 @@ export interface SharedRecordInfo {
   is_valid: boolean;
   access_count: number;
   last_accessed: string | null;
+  access_key?: string;
   record_info: {
     title: string | null;
     record_type: string | null;
@@ -449,4 +450,51 @@ export interface HealthStatisticsResponse {
 export interface BatchUpdateVisibilityRequest {
   record_ids: string[];
   visibility: RecordVisibility;
-} 
+}
+
+// 可共享用户接口
+export interface ShareableUser {
+  id: number;
+  username: string;
+  full_name: string;
+  email: string;
+  avatar?: string;
+  role: string;
+  doctor_info?: {
+    specialty?: string;
+    hospital?: string;
+    department?: string;
+    years_of_experience?: number;
+    bio?: string;
+  };
+  patient_info?: {
+    gender?: string;
+    address?: string;
+  };
+  shared_records_count: number;
+}
+
+export interface ShareableUserDetail extends ShareableUser {
+  created_at?: string;
+  shared_records: Array<{
+    share_id: number;
+    record_id: string;
+    title: string;
+    record_type: string;
+    permission: string;
+    created_at?: string;
+  }>;
+}
+
+export interface ShareableUsersResponse {
+  users: ShareableUser[];
+  role_stats: Record<string, number>;
+  pagination: {
+    total: number;
+    pages: number;
+    page: number;
+    per_page: number;
+    has_next: boolean;
+    has_prev: boolean;
+  };
+}

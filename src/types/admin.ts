@@ -357,4 +357,99 @@ export interface BatchJobUploadResponse {
  */
 export interface BatchJobProcessResponse {
   batch_job: BatchJob;
+}
+
+// 医疗机构类型定义
+export interface Institution {
+  id: number;
+  name: string;
+  code?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  description?: string;
+  logo_url?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InstitutionsResponse {
+  institutions: Institution[];
+  total: number;
+  page: number;
+  per_page: number;
+  pages: number;
+}
+
+export interface InstitutionResponse {
+  institution: Institution;
+}
+
+export interface CreateInstitutionRequest {
+  name: string;
+  code?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  description?: string;
+  logo_url?: string;
+  is_active?: boolean;
+}
+
+export interface UpdateInstitutionRequest {
+  name?: string;
+  code?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  description?: string;
+  logo_url?: string;
+  is_active?: boolean;
+}
+
+// 记录类型定义
+export interface CustomRecordType {
+  id: number;
+  code: string;
+  name: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RecordTypesResponse {
+  record_types: CustomRecordType[];
+  total: number;
+  page: number;
+  per_page: number;
+  pages: number;
+}
+
+export interface RecordTypeResponse {
+  record_type: CustomRecordType;
+}
+
+export interface CreateRecordTypeRequest {
+  code: string;
+  name: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  is_active?: boolean;
+}
+
+export interface UpdateRecordTypeRequest {
+  code?: string;
+  name?: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  is_active?: boolean;
 } 

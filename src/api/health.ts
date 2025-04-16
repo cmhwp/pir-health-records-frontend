@@ -30,7 +30,9 @@ import type {
   SharedRecordsResponse,
   UpdatePIRSettingsRequest,
   UpdateRecordRequest,
-  ViewSharedRecordResponse
+  ViewSharedRecordResponse,
+  ShareableUsersResponse,
+  ShareableUserDetail
 } from '../types/health';
 
 const API_PATH = '/health';
@@ -370,4 +372,54 @@ export const batchUpdateVisibility = async (
   data: BatchUpdateVisibilityRequest
 ): Promise<ApiResponse<any>> => {
   return request.post(`${API_PATH}/records/batch/visibility`, data);
+};
+
+/**
+ * 获取可共享的用户列表
+ */
+export const getShareableUsers = async (
+  page: number = 1,
+  perPage: number = 20,
+  search?: string,
+  role?: string
+): Promise<ApiResponse<ShareableUsersResponse>> => {
+  const params: any = {
+    page,
+    per_page: perPage
+  };
+  
+  if (search) {
+    params.search = search;
+  }
+  
+  if (role) {
+    params.role = role;
+  }
+  
+  return request.get(`${API_PATH}/share/users`, { params });
+};
+
+/**
+ * 获取可共享用户详情
+ */
+export const getShareableUserDetail = async (
+  userId: number
+): Promise<ApiResponse<ShareableUserDetail>> => {
+  return request.get(`${API_PATH}/share/users/${userId}`);
+};
+
+/**
+ * 获取共享记录的直接访问链接
+ */
+export const getSharedRecordAccessUrl = (accessKey: string): string => {
+  return `${window.location.origin}/shared/${accessKey}`;
+};
+
+/**
+ * 通过访问密钥直接获取共享记录
+ */
+export const accessSharedRecordByKey = async (
+  accessKey: string
+): Promise<ApiResponse<ViewSharedRecordResponse>> => {
+  return request.get(`${API_PATH}/shared/access/${accessKey}`);
 }; 

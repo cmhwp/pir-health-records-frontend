@@ -156,7 +156,7 @@
             <a-form layout="vertical" :model="shareForm">
               <a-form-item label="选择用户" required>
                 <a-select
-                  v-model:value="shareForm.shared_with"
+                  v-model:value="shareForm.share_with_id"
                   placeholder="请选择要共享的用户"
                   :loading="loadingUsers"
                 >
@@ -284,9 +284,10 @@ import {
   getRecordFileUrl,
   getRecordsSharedByMe,
   shareHealthRecord,
-  revokeSharedRecord
+  revokeSharedRecord,
+  getShareableUsers
 } from '@/api/health';
-import { getUsers } from '@/api/users';
+
 import {
   RecordType,
   RecordVisibility,
@@ -295,7 +296,7 @@ import {
   type VersionInfo,
   type SharedRecordWithUser
 } from '@/types/health';
-import type { User } from '@/types/user';
+import type { ShareableUser } from '@/types/health';
 
 const route = useRoute();
 const router = useRouter();
@@ -333,11 +334,11 @@ const restoreDescription = ref('');
 // 共享相关
 const loadingUsers = ref(false);
 const loadingShared = ref(false);
-const userOptions = ref<User[]>([]);
+const userOptions = ref<ShareableUser[]>([]);
 const sharedRecords = ref<SharedRecordWithUser[]>([]);
 const sharing = ref(false);
 const shareForm = reactive({
-  shared_with: undefined as number | undefined,
+  share_with_id: undefined as number | undefined,
   permission: SharePermission.VIEW,
   validity_type: 'forever',
   expires_days: 30
@@ -375,7 +376,14 @@ const fetchVersions = async () => {
   try {
     const response = await getRecordVersions(recordId.value);
     if (response.success && response.data) {
-      versions.value = response.data.versions;
+      // 将 API 返回的数据格式化为符合 VersionInfo 类型的格式
+      versions.value = response.data.versions.map((v: any) => ({
+        version: v.version,
+        created_at: v.created_at,
+        description: v.description,
+        created_by: v.creator?.username || '',
+        changes: v.changes
+      }));
     } else {
       message.error(response.message || '获取版本历史失败');
     }
@@ -433,7 +441,7 @@ const confirmRestore = async () => {
 const fetchUsers = async () => {
   loadingUsers.value = true;
   try {
-    const response = await getUsers();
+    const response = await getShareableUsers();
     if (response.success && response.data) {
       userOptions.value = response.data.users;
     } else {
@@ -479,7 +487,7 @@ const handleValidityChange = (e: any) => {
 
 // 提交共享
 const submitShare = async () => {
-  if (!recordId.value || !shareForm.shared_with) {
+  if (!recordId.value || !shareForm.share_with_id) {
     message.warning('请选择要共享的用户');
     return;
   }
@@ -487,9 +495,9 @@ const submitShare = async () => {
   sharing.value = true;
   try {
     const shareData = {
-      shared_with: shareForm.shared_with,
+      share_with_id: shareForm.share_with_id,
       permission: shareForm.permission,
-      expires_days: shareForm.validity_type === 'days' ? shareForm.expires_days : undefined
+      expiry_days: shareForm.validity_type === 'days' ? shareForm.expires_days : undefined
     };
     
     const response = await shareHealthRecord(recordId.value, shareData);
@@ -497,7 +505,7 @@ const submitShare = async () => {
     if (response.success) {
       message.success('记录已成功共享');
       // 重置表单
-      shareForm.shared_with = undefined;
+      shareForm.share_with_id = undefined;
       shareForm.permission = SharePermission.VIEW;
       shareForm.validity_type = 'forever';
       shareForm.expires_days = 30;

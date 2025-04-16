@@ -235,6 +235,18 @@ const routes: Array<RouteRecordRaw> = [
         meta: { requiresAuth: true, role: 'admin', title: '用户活动分析' }
       },
       {
+        path: 'institutions',
+        name: 'AdminInstitutions',
+        component: () => import('@/components/admin/InstitutionsContent.vue'),
+        meta: { requiresAuth: true, role: 'admin', title: '医疗机构管理' }
+      },
+      {
+        path: 'record-types',
+        name: 'AdminRecordTypes',
+        component: () => import('@/components/admin/RecordTypesContent.vue'),
+        meta: { requiresAuth: true, role: 'admin', title: '记录类型管理' }
+      },
+      {
         path: 'profile',
         name: 'AdminProfile',
         component: () => import('@/views/auth/Profile.vue'),
@@ -243,6 +255,12 @@ const routes: Array<RouteRecordRaw> = [
     ]
   },
   // 其他路由可以根据需要添加
+  {
+    path: '/shared/:accessKey',
+    name: 'SharedRecordAccess',
+    component: () => import('@/views/SharedRecordView.vue'),
+    meta: { requiresAuth: false, title: '共享健康记录' }
+  },
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',

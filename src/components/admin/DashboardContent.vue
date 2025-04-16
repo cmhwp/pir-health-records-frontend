@@ -321,6 +321,34 @@
           </a-card>
         </a-col>
       </a-row>
+
+      <!-- 添加新行 -->
+      <a-row :gutter="16" style="margin-top: 16px">
+        <a-col :span="6">
+          <a-card hoverable @click="router.push('/admin/institutions')">
+            <template #cover>
+              <div style="background-color: #eb2f96; height: 120px; display: flex; justify-content: center; align-items: center;">
+                <bank-outlined style="font-size: 64px; color: white;" />
+              </div>
+            </template>
+            <a-card-meta title="医疗机构管理">
+              <template #description>管理系统中的医疗机构信息</template>
+            </a-card-meta>
+          </a-card>
+        </a-col>
+        <a-col :span="6">
+          <a-card hoverable @click="router.push('/admin/record-types')">
+            <template #cover>
+              <div style="background-color: #13c2c2; height: 120px; display: flex; justify-content: center; align-items: center;">
+                <tags-outlined style="font-size: 64px; color: white;" />
+              </div>
+            </template>
+            <a-card-meta title="记录类型管理">
+              <template #description>管理健康记录的类型定义</template>
+            </a-card-meta>
+          </a-card>
+        </a-col>
+      </a-row>
     </a-spin>
   </div>
 </template>
@@ -346,7 +374,9 @@ import {
   BarChartOutlined,
   SafetyOutlined,
   WarningOutlined,
-  ReloadOutlined
+  ReloadOutlined,
+  BankOutlined,
+  TagsOutlined
 } from '@ant-design/icons-vue';
 import { getAdminDashboard } from '@/api/admin';
 import type { AdminDashboardResponse } from '@/types/admin';

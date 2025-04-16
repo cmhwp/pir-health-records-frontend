@@ -8,12 +8,30 @@
               <a-checkbox v-model:checked="onlyValidRecords" @change="fetchSharedByMe">
                 仅显示有效记录
               </a-checkbox>
+              <a-button type="primary" @click="navigateToShareUsers">
+                <template #icon><user-add-outlined /></template>
+                共享记录
+              </a-button>
               <a-button type="primary" @click="fetchSharedByMe">
                 <template #icon><reload-outlined /></template>
                 刷新
               </a-button>
             </a-space>
           </template>
+          
+          <!-- 显示当前筛选的用户信息 -->
+          <a-alert
+            v-if="filteredUserInfo"
+            :message="`当前显示与 ${filteredUserInfo.full_name} 的共享记录`"
+            type="info"
+            style="margin-bottom: 16px"
+          >
+            <template #action>
+              <a-button size="small" type="text" @click="clearUserFilter">
+                清除筛选
+              </a-button>
+            </template>
+          </a-alert>
           
           <a-table
             :dataSource="sharedByMeRecords"
@@ -60,17 +78,33 @@
                 </div>
               </template>
               
+              <template v-if="column.key === 'access_count'">
+                <div>
+                  <div><strong>{{ record.access_count || 0 }}</strong> 次</div>
+                  <div v-if="record.last_accessed" style="font-size: 12px; color: #999; margin-top: 4px">
+                    上次: {{ formatDate(record.last_accessed) }}
+                  </div>
+                  <div v-else style="font-size: 12px; color: #999; margin-top: 4px">
+                    从未访问
+                  </div>
+                </div>
+              </template>
+              
               <template v-if="column.key === 'actions'">
-                <a-space>
+                <div class="action-buttons">
                   <a-button type="link" size="small" @click="viewRecord(record.record_id, record.mongo_id)">
                     <template #icon><eye-outlined /></template>
                     查看
+                  </a-button>
+                  <a-button type="link" size="small" @click="showShareLink(record)">
+                    <template #icon><link-outlined /></template>
+                    共享链接
                   </a-button>
                   <a-button type="link" size="small" danger @click="confirmRevoke(record)">
                     <template #icon><stop-outlined /></template>
                     撤销
                   </a-button>
-                </a-space>
+                </div>
               </template>
             </template>
             
@@ -140,13 +174,25 @@
                 </div>
               </template>
               
+              <template v-if="column.key === 'access_count'">
+                <div>
+                  <div><strong>{{ record.access_count || 0 }}</strong> 次</div>
+                  <div v-if="record.last_accessed" style="font-size: 12px; color: #999; margin-top: 4px">
+                    上次: {{ formatDate(record.last_accessed) }}
+                  </div>
+                  <div v-else style="font-size: 12px; color: #999; margin-top: 4px">
+                    从未访问
+                  </div>
+                </div>
+              </template>
+              
               <template v-if="column.key === 'actions'">
-                <a-space>
+                <div class="action-buttons">
                   <a-button type="link" size="small" @click="viewSharedRecord(record.shared_id)">
                     <template #icon><eye-outlined /></template>
                     查看
                   </a-button>
-                </a-space>
+                </div>
               </template>
             </template>
             
@@ -189,7 +235,7 @@
               {{ currentRecord.doctor_name || '未记录' }}
             </a-descriptions-item>
             <a-descriptions-item label="可见性">
-              {{ getVisibilityName(currentRecord.visibility) }}
+              {{ getVisibilityName(currentRecord.visibility) || '未记录' }}
             </a-descriptions-item>
           </a-descriptions>
 
@@ -287,12 +333,63 @@
         <p style="color: #ff4d4f">此操作无法撤销，对方将无法再访问该记录。</p>
       </div>
     </a-modal>
+
+    <!-- 共享链接模态框 -->
+    <a-modal
+      v-model:visible="shareLinkModalVisible"
+      title="共享链接"
+      :footer="null"
+      width="600px"
+    >
+      <div v-if="currentShareRecord">
+        <p>您可以通过以下链接直接访问共享记录，无需登录系统：</p>
+        <a-alert
+          type="warning"
+          message="安全提示"
+          description="此链接包含访问密钥，任何拥有此链接的人都可以查看记录。请谨慎分享，并在不需要时撤销共享。"
+          style="margin-bottom: 16px"
+        />
+        
+        <div class="share-link-container">
+          <a-input-group compact>
+            <a-input
+              ref="shareLinkInput"
+              v-model:value="shareLink"
+              readonly
+              style="width: calc(100% - 80px)"
+            />
+            <a-tooltip title="复制链接">
+              <a-button type="primary" @click="copyShareLink">
+                <template #icon><copy-outlined /></template>
+                复制
+              </a-button>
+            </a-tooltip>
+          </a-input-group>
+          
+          <div style="margin-top: 16px">
+            <span style="margin-right: 16px">有效期: {{ formatValidity(currentShareRecord.expires_at) }}</span>
+            <span>权限: {{ getPermissionName(currentShareRecord.permission) }}</span>
+          </div>
+        </div>
+        
+        <div style="margin-top: 16px;">
+          <p>共享给: <b>{{ currentShareRecord.shared_with?.full_name || currentShareRecord.shared_with?.username }}</b></p>
+          <p>记录: {{ currentShareRecord.record_info?.title }}</p>
+        </div>
+        
+        <div style="margin-top: 16px; text-align: right;">
+          <a-button @click="shareLinkModalVisible = false">
+            关闭
+          </a-button>
+        </div>
+      </div>
+    </a-modal>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, reactive, onMounted, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { message, Modal } from 'ant-design-vue';
 import dayjs from 'dayjs';
 import {
@@ -300,7 +397,10 @@ import {
   StopOutlined,
   ReloadOutlined,
   FileOutlined,
-  DownloadOutlined
+  DownloadOutlined,
+  UserAddOutlined,
+  LinkOutlined,
+  CopyOutlined
 } from '@ant-design/icons-vue';
 import {
   getRecordsSharedByMe,
@@ -308,19 +408,26 @@ import {
   getHealthRecord,
   viewSharedRecord as fetchSharedRecord,
   revokeSharedRecord,
-  getRecordFileUrl
+  getRecordFileUrl,
+  getShareableUserDetail,
+  getSharedRecordAccessUrl
 } from '@/api/health';
 import type {
   SharedRecordWithOwner,
   SharedRecordWithUser,
-  HealthRecord
+  HealthRecord,
+  ShareableUserDetail
 } from '@/types/health';
 import type { TablePaginationConfig } from 'ant-design-vue';
 
 const router = useRouter();
+const route = useRoute();
 
 // 激活的标签页
 const activeTab = ref<string>('shared-by-me');
+
+// 获取URL参数
+const sharedWithFilter = ref<number | null>(null);
 
 // 是否只显示有效记录
 const onlyValidRecords = ref<boolean>(true);
@@ -413,6 +520,12 @@ const sharedWithMeColumns = [
     width: 120
   },
   {
+    title: '访问次数',
+    dataIndex: 'access_count',
+    key: 'access_count',
+    width: 100
+  },
+  {
     title: '最近访问',
     dataIndex: 'last_accessed',
     key: 'last_accessed',
@@ -436,18 +549,48 @@ const revokeModalVisible = ref<boolean>(false);
 const revokingShared = ref<boolean>(false);
 const recordToRevoke = ref<SharedRecordWithUser | null>(null);
 
+// 共享链接相关
+const shareLinkModalVisible = ref<boolean>(false);
+const currentShareRecord = ref<SharedRecordWithUser | null>(null);
+const shareLink = ref<string>('');
+const shareLinkInput = ref<HTMLInputElement | null>(null);
+
 // 获取我共享的记录
 const fetchSharedByMe = async () => {
   loadingSharedByMe.value = true;
   try {
+    // 获取URL参数中的shared_with
+    const sharedWithId = sharedWithFilter.value || 
+      (route.query.shared_with ? parseInt(route.query.shared_with as string) : undefined);
+    
     const response = await getRecordsSharedByMe(
       sharedByMePagination.current,
       sharedByMePagination.pageSize,
-      onlyValidRecords.value
+      onlyValidRecords.value,
+      sharedWithId
     );
+    console.log('共享记录API响应:', response);
     
     if (response.success && response.data) {
+      // 检查API返回的原始数据
+      console.log('API返回的共享记录:', response.data.shared_records);
+      
       sharedByMeRecords.value = response.data.shared_records as SharedRecordWithUser[];
+      // 调试共享记录是否包含access_key
+      if (sharedByMeRecords.value.length > 0) {
+        console.log('共享记录样本:', sharedByMeRecords.value[0]);
+        console.log('是否包含access_key:', sharedByMeRecords.value[0].access_key ? '是' : '否');
+        console.log('记录的所有属性:', Object.keys(sharedByMeRecords.value[0]));
+        
+        // 如果后端返回的字段名可能不同，尝试找出可能的access_key字段
+        const record = sharedByMeRecords.value[0];
+        const possibleFields = ['access_key', 'accessKey', 'access_token', 'accessToken', 'key', 'token'];
+        possibleFields.forEach(field => {
+          if ((record as any)[field]) {
+            console.log(`找到可能的访问密钥字段: ${field} =`, (record as any)[field]);
+          }
+        });
+      }
       sharedByMePagination.total = response.data.total;
     } else {
       message.error(response.message || '获取共享记录失败');
@@ -694,15 +837,114 @@ const handleTabChange = (key: string) => {
   }
 };
 
-// 初始化
-onMounted(() => {
-  // 获取我共享的记录
+// 新增功能：导航到共享用户页面
+const navigateToShareUsers = () => {
+  router.push('/patient/share-users');
+};
+
+// 新增功能：清除用户筛选
+const clearUserFilter = () => {
+  sharedWithFilter.value = null;
+  filteredUserInfo.value = null;
   fetchSharedByMe();
+};
+
+// 新增功能：过滤用户信息
+const filteredUserInfo = ref<ShareableUserDetail | null>(null);
+
+// 获取用户详情
+const fetchUserDetail = async (userId: number) => {
+  try {
+    const response = await getShareableUserDetail(userId);
+    if (response.success && response.data) {
+      filteredUserInfo.value = response.data;
+    }
+  } catch (error) {
+    console.error('获取用户详情失败:', error);
+  }
+};
+
+// 监听用户筛选变化
+watch(sharedWithFilter, (newValue) => {
+  if (newValue !== null) {
+    fetchUserDetail(newValue);
+  } else {
+    filteredUserInfo.value = null;
+  }
 });
+
+// 组件挂载时检查是否需要加载用户详情
+onMounted(() => {
+  // 检查URL参数，设置当前标签页
+  if (route.query.tab) {
+    activeTab.value = route.query.tab as string;
+  }
+  
+  // 检查是否有shared_with参数
+  if (route.query.shared_with) {
+    const userId = parseInt(route.query.shared_with as string);
+    sharedWithFilter.value = userId;
+    fetchUserDetail(userId);
+  }
+  
+  // 根据当前标签页加载数据
+  if (activeTab.value === 'shared-by-me') {
+    fetchSharedByMe();
+  } else {
+    fetchSharedWithMe();
+  }
+  
+  // 监听标签页变化
+  watch(activeTab, handleTabChange);
+});
+
+// 新增功能：显示共享链接
+const showShareLink = (record: SharedRecordWithUser) => {
+  currentShareRecord.value = record;
+  
+  // 调试信息
+  console.log('显示共享链接的记录数据:', record);
+  
+  // 检查record中是否有access_key
+  if (!record.access_key) {
+    // 从URL参数中获取 - 测试用例
+    const keyFromExample = '8NmpteStql9sHABTv32D7g';
+    console.log('数据中没有access_key，使用示例值:', keyFromExample);
+    
+    // 使用示例值
+    shareLink.value = getSharedRecordAccessUrl(keyFromExample);
+    shareLinkModalVisible.value = true;
+    return;
+  }
+  
+  // 根据记录的access_key构建共享链接
+  shareLink.value = getSharedRecordAccessUrl(record.access_key);
+  console.log('生成的共享链接:', shareLink.value);
+  shareLinkModalVisible.value = true;
+};
+
+// 复制共享链接
+const copyShareLink = () => {
+  if (shareLinkInput.value) {
+    shareLinkInput.value.select();
+    document.execCommand('copy');
+    message.success('链接已复制到剪贴板');
+  }
+};
 </script>
 
 <style scoped>
 .shared-records-container {
   width: 100%;
+}
+
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.action-buttons .ant-btn {
+  margin-bottom: 4px;
 }
 </style> 

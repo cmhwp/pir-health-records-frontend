@@ -17,7 +17,16 @@ import type {
   BatchJobDetailsResponse,
   BatchJobUploadResponse,
   BatchJobProcessResponse,
-  BatchStatus
+  BatchStatus,
+  // 添加新类型导入
+  InstitutionsResponse,
+  InstitutionResponse,
+  CreateInstitutionRequest,
+  UpdateInstitutionRequest,
+  RecordTypesResponse,
+  RecordTypeResponse,
+  CreateRecordTypeRequest,
+  UpdateRecordTypeRequest
 } from '@/types/admin';
 import type { ApiResponse } from '@/types/auth';
 import type { 
@@ -206,4 +215,94 @@ export const getBatchResultsDownloadUrl = (
   jobId: string
 ): string => {
   return `${request.defaults.baseURL}/admin/batch-records/${jobId}/download`;
+};
+
+/**
+ * 获取医疗机构列表
+ */
+export const getInstitutions = (
+  page: number = 1, 
+  per_page: number = 20, 
+  search: string = ''
+): Promise<ApiResponse<InstitutionsResponse>> => {
+  return request.get('/admin/institutions', {
+    params: {
+      page,
+      per_page,
+      search
+    }
+  });
+};
+
+/**
+ * 获取单个医疗机构详情
+ */
+export const getInstitution = (id: number): Promise<ApiResponse<InstitutionResponse>> => {
+  return request.get(`/admin/institutions/${id}`);
+};
+
+/**
+ * 创建新医疗机构
+ */
+export const createInstitution = (data: CreateInstitutionRequest): Promise<ApiResponse<InstitutionResponse>> => {
+  return request.post('/admin/institutions', data);
+};
+
+/**
+ * 更新医疗机构信息
+ */
+export const updateInstitution = (id: number, data: UpdateInstitutionRequest): Promise<ApiResponse<InstitutionResponse>> => {
+  return request.put(`/admin/institutions/${id}`, data);
+};
+
+/**
+ * 删除医疗机构
+ */
+export const deleteInstitution = (id: number): Promise<ApiResponse<{ message: string }>> => {
+  return request.delete(`/admin/institutions/${id}`);
+};
+
+/**
+ * 获取记录类型列表
+ */
+export const getRecordTypes = (
+  page: number = 1, 
+  per_page: number = 20, 
+  search: string = ''
+): Promise<ApiResponse<RecordTypesResponse>> => {
+  return request.get('/admin/record-types', {
+    params: {
+      page,
+      per_page,
+      search
+    }
+  });
+};
+
+/**
+ * 获取单个记录类型详情
+ */
+export const getRecordType = (id: number): Promise<ApiResponse<RecordTypeResponse>> => {
+  return request.get(`/admin/record-types/${id}`);
+};
+
+/**
+ * 创建新记录类型
+ */
+export const createRecordType = (data: CreateRecordTypeRequest): Promise<ApiResponse<RecordTypeResponse>> => {
+  return request.post('/admin/record-types', data);
+};
+
+/**
+ * 更新记录类型信息
+ */
+export const updateRecordType = (id: number, data: UpdateRecordTypeRequest): Promise<ApiResponse<RecordTypeResponse>> => {
+  return request.put(`/admin/record-types/${id}`, data);
+};
+
+/**
+ * 删除记录类型
+ */
+export const deleteRecordType = (id: number): Promise<ApiResponse<{ message: string }>> => {
+  return request.delete(`/admin/record-types/${id}`);
 }; 
