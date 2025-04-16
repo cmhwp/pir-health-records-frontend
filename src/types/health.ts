@@ -1,16 +1,14 @@
 import type { ApiResponse } from './auth';
 
-export enum RecordType {
-  GENERAL = 'general',
-  LABORATORY = 'laboratory',
-  MEDICATION = 'medication',
-  IMAGING = 'imaging',
-  VITAL_SIGNS = 'vital_signs',
-  SURGERY = 'surgery',
-  VACCINATION = 'vaccination',
-  ALLERGY = 'allergy',
-  DIAGNOSIS = 'diagnosis',
-  OTHER = 'other'
+// 记录类型别名
+export type RecordType = string;
+
+export interface RecordTypeInfo {
+  id: number;
+  code: string;
+  name: string;
+  color?: string;
+  icon?: string;
 }
 
 export enum RecordVisibility {
@@ -64,7 +62,7 @@ export interface VersionInfo {
 export interface HealthRecord {
   _id: string;
   title: string;
-  record_type: RecordType;
+  record_type: string;
   description?: string;
   record_date: string;
   institution?: string;
@@ -87,7 +85,7 @@ export interface HealthRecord {
 export interface CreateRecordRequest {
   record_data: {
     title: string;
-    record_type: RecordType;
+    record_type: string;
     description?: string;
     record_date?: string;
     institution?: string;
@@ -123,7 +121,7 @@ export interface UpdateRecordRequest {
 export interface GetRecordsParams {
   page?: number;
   per_page?: number;
-  record_type?: RecordType;
+  record_type?: string;
   start_date?: string;
   end_date?: string;
   keyword?: string;
@@ -245,6 +243,25 @@ export interface ViewSharedRecordResponse {
       full_name: string | null;
     };
   };
+  sharing_info?: {
+    id: number;
+    permission: string;
+    created_at: string | null;
+    expires_at: string | null;
+    is_valid: boolean;
+    access_count: number;
+    last_accessed: string | null;
+    owner: {
+      id: number | null;
+      username: string | null;
+      full_name: string | null;
+    };
+    shared_with: {
+      id: number | null;
+      username: string | null;
+      full_name: string | null;
+    };
+  };
   record: HealthRecord;
   sql_id: number;
 }
@@ -274,7 +291,7 @@ export interface ImportRecordsResponse {
 export interface BatchUploadRecordsRequest {
   records: {
     title: string;
-    record_type: RecordType;
+    record_type: string;
     description?: string;
     record_date?: string;
     institution?: string;
@@ -497,4 +514,22 @@ export interface ShareableUsersResponse {
     has_next: boolean;
     has_prev: boolean;
   };
+}
+
+export interface RecordTypesResponse {
+  record_types: RecordTypeInfo[];
+}
+
+export interface InstitutionInfo {
+  id: number;
+  name: string;
+  address?: string;
+  type?: string;
+  phone?: string;
+  website?: string;
+  description?: string;
+}
+
+export interface InstitutionsResponse {
+  institutions: InstitutionInfo[];
 }

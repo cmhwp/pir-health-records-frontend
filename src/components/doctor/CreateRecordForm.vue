@@ -126,7 +126,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, computed } from 'vue';
 import { message, Upload } from 'ant-design-vue';
 import type { FormInstance, UploadProps } from 'ant-design-vue';
 import { InboxOutlined } from '@ant-design/icons-vue';
@@ -135,7 +135,11 @@ import type { Dayjs } from 'dayjs';
 import { getDoctorPatients } from '@/api/doctor';
 import { createEncryptedHealthRecord } from '@/api/doctor';
 import type { CreateEncryptedRecordRequest } from '@/types/doctor';
-import type { RecordType, RecordVisibility } from '@/types/health';
+import type { RecordVisibility } from '@/types/health';
+import { useRecordTypes } from '@/hooks/useRecordTypes';
+
+// 定义记录类型的类型别名
+type RecordType = string;
 
 // 组件事件
 const emit = defineEmits<{
@@ -145,6 +149,9 @@ const emit = defineEmits<{
 
 // 表单引用
 const formRef = ref<FormInstance>();
+
+// 使用记录类型钩子
+const recordTypesHook = useRecordTypes();
 
 // 表单状态
 const formState = reactive({
@@ -166,18 +173,7 @@ const fileList = ref<any[]>([]);
 const isEncrypted = ref(false);
 
 // 选项数据
-const recordTypeOptions = [
-  { label: '一般记录', value: 'general' },
-  { label: '实验室检查', value: 'laboratory' },
-  { label: '药物治疗', value: 'medication' },
-  { label: '影像检查', value: 'imaging' },
-  { label: '生命体征', value: 'vital_signs' },
-  { label: '手术记录', value: 'surgery' },
-  { label: '疫苗接种', value: 'vaccination' },
-  { label: '过敏记录', value: 'allergy' },
-  { label: '诊断记录', value: 'diagnosis' },
-  { label: '其他', value: 'other' },
-];
+const recordTypeOptions = computed(() => recordTypesHook.recordTypeOptions.value);
 
 const visibilityOptions = [
   { label: '私密', value: 'private' },
@@ -309,7 +305,7 @@ const handleCancel = () => {
   emit('cancel');
 };
 
-// 组件挂载时加载患者列表
+// 组件挂载时加载患者列表和记录类型
 onMounted(() => {
   loadPatients();
 });

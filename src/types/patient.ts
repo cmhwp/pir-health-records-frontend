@@ -165,4 +165,74 @@ export interface DoctorAppointmentInfo {
   notes?: string;
   location?: string;
   department?: string;
+}
+
+// 医疗机构接口
+export interface Institution {
+  id: number;
+  name: string;
+  code?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  description?: string;
+  logo_url?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InstitutionsResponse {
+  institutions: Institution[];
+  pagination: {
+    total: number;
+    pages: number;
+    page: number;
+    per_page: number;
+    has_next: boolean;
+    has_prev: boolean;
+  };
+}
+
+export interface InstitutionResponse {
+  institution: Institution;
+}
+
+export interface InstitutionDoctorsResponse {
+  institution: Institution;
+  doctors: Doctor[];
+  filters: {
+    departments: Record<string, number>;
+    specialties: Record<string, number>;
+  };
+  pagination: {
+    total: number;
+    pages: number;
+    page: number;
+    per_page: number;
+    has_next: boolean;
+    has_prev: boolean;
+  };
+}
+
+// 记录类型接口
+export interface CustomRecordType {
+  id: number;
+  code: string;
+  name: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RecordTypesResponse {
+  record_types: CustomRecordType[];
+}
+
+export interface RecordTypeResponse {
+  record_type: CustomRecordType;
 } 

@@ -174,7 +174,8 @@ import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import { updateDoctorRecord } from '@/api/doctor';
 import type { UpdateDoctorRecordRequest } from '@/types/doctor';
-import type { RecordType, RecordVisibility } from '@/types/health';
+import type { RecordVisibility } from '@/types/health';
+import { useRecordTypes } from '@/hooks/useRecordTypes';
 
 // 组件属性
 const props = defineProps({
@@ -199,10 +200,13 @@ const recordIsEncrypted = computed(() => props.record?.is_encrypted || false);
 // 实验室检查项目
 const labItems = ref<any[]>([]);
 
+// 使用记录类型钩子
+const recordTypesHook = useRecordTypes();
+
 // 表单状态
 const formState = reactive({
   title: '',
-  record_type: undefined as RecordType | undefined,
+  record_type: undefined as string | undefined,
   record_date: null as Dayjs | null,
   description: '',
   visibility: undefined as RecordVisibility | undefined,
@@ -221,22 +225,13 @@ const formState = reactive({
   }
 });
 
-// 状态变量
+// 其他状态
 const submitting = ref(false);
+const isEncrypted = ref(false);
+const fileList = ref<any[]>([]);
 
 // 选项数据
-const recordTypeOptions = [
-  { label: '一般记录', value: 'general' },
-  { label: '实验室检查', value: 'laboratory' },
-  { label: '药物治疗', value: 'medication' },
-  { label: '影像检查', value: 'imaging' },
-  { label: '生命体征', value: 'vital_signs' },
-  { label: '手术记录', value: 'surgery' },
-  { label: '疫苗接种', value: 'vaccination' },
-  { label: '过敏记录', value: 'allergy' },
-  { label: '诊断记录', value: 'diagnosis' },
-  { label: '其他', value: 'other' },
-];
+const recordTypeOptions = computed(() => recordTypesHook.recordTypeOptions.value);
 
 const visibilityOptions = [
   { label: '私密', value: 'private' },
@@ -308,6 +303,16 @@ const addLabItem = () => {
 // 移除实验室检查项目
 const removeLabItem = (index: number) => {
   labItems.value.splice(index, 1);
+};
+
+// 加载记录类型
+const loadRecordTypes = async () => {
+  try {
+    await recordTypesHook.loadRecordTypes();
+  } catch (error) {
+    console.error('获取记录类型失败:', error);
+    message.error('获取记录类型失败');
+  }
 };
 
 // 处理表单提交
@@ -397,6 +402,7 @@ watch(
 // 组件挂载时初始化数据
 onMounted(() => {
   initFormData();
+  loadRecordTypes();
 });
 </script>
 

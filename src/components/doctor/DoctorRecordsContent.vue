@@ -307,25 +307,21 @@ import type {
   VerifyComplianceResponse,
   AuditLog
 } from '@/types/doctor';
-import type { RecordType, RecordVisibility } from '@/types/health';
+import type { RecordVisibility } from '@/types/health';
+import { useRecordTypes } from '@/hooks/useRecordTypes';
 // 导入组件
 import CreateRecordForm from './CreateRecordForm.vue';
 import ViewRecordDetail from './ViewRecordDetail.vue';
 import EditRecordForm from './EditRecordForm.vue';
 
-// Record type options
-const recordTypeOptions = [
-  { label: '一般记录', value: 'general' },
-  { label: '实验室检查', value: 'laboratory' },
-  { label: '药物治疗', value: 'medication' },
-  { label: '影像检查', value: 'imaging' },
-  { label: '生命体征', value: 'vital_signs' },
-  { label: '手术记录', value: 'surgery' },
-  { label: '疫苗接种', value: 'vaccination' },
-  { label: '过敏记录', value: 'allergy' },
-  { label: '诊断记录', value: 'diagnosis' },
-  { label: '其他', value: 'other' },
-];
+// 定义记录类型的类型别名
+type RecordType = string;
+
+// 使用记录类型钩子
+const recordTypesHook = useRecordTypes();
+
+// 选项数据
+const recordTypeOptions = computed(() => recordTypesHook.recordTypeOptions.value);
 
 // 表格列定义
 const columns = [
@@ -418,8 +414,19 @@ const verificationResult = ref<VerifyComplianceResponse | null>(null);
 const loadingAuditLogs = ref(false);
 const auditLogs = ref<AuditLog[]>([]);
 
+// 加载记录类型
+const loadRecordTypes = async () => {
+  try {
+    await recordTypesHook.loadRecordTypes();
+  } catch (error) {
+    console.error('获取记录类型失败:', error);
+    message.error('获取记录类型失败');
+  }
+};
+
 // 初始化
 onMounted(() => {
+  loadRecordTypes();
   loadRecords();
   loadPatients();
 });
@@ -619,27 +626,14 @@ const formatDate = (dateString: string) => {
   return dayjs(dateString).format('YYYY-MM-DD HH:mm:ss');
 };
 
-// 获取记录类型颜色
-const getRecordTypeColor = (type: RecordType) => {
-  const colorMap: { [key: string]: string } = {
-    general: 'blue',
-    laboratory: 'cyan',
-    medication: 'orange',
-    imaging: 'purple',
-    vital_signs: 'green',
-    surgery: 'red',
-    vaccination: 'gold',
-    allergy: 'magenta',
-    diagnosis: 'volcano',
-    other: 'default'
-  };
-  return colorMap[type] || 'default';
-};
-
 // 获取记录类型标签
 const getRecordTypeLabel = (type: RecordType) => {
-  const option = recordTypeOptions.find(opt => opt.value === type);
-  return option ? option.label : type;
+  return recordTypesHook.getRecordTypeName(type) || type;
+};
+
+// 获取记录类型颜色
+const getRecordTypeColor = (type: RecordType) => {
+  return recordTypesHook.getRecordTypeColor(type) || 'default';
 };
 
 // 获取可见性颜色

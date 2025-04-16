@@ -74,6 +74,31 @@
       </a-form>
     </div>
 
+    <div class="button-container" style="margin-bottom: 16px">
+      <a-space>
+        <a-button type="primary" @click="addRecord">
+          <template #icon><plus-outlined /></template>
+          添加记录
+        </a-button>
+        <a-button @click="handleExport">
+          <template #icon><export-outlined /></template>
+          导出
+        </a-button>
+        <a-button @click="handleImport">
+          <template #icon><import-outlined /></template>
+          导入
+        </a-button>
+        <a-button v-if="selectedRowKeys.length > 0" @click="showBatchVisibilityModal">
+          <template #icon><eye-outlined /></template>
+          批量设置可见性
+        </a-button>
+      </a-space>
+      
+      <a-badge v-if="selectedRowKeys.length > 0" :count="selectedRowKeys.length" style="margin-left: 8px">
+        <a-tag color="blue">已选择</a-tag>
+      </a-badge>
+    </div>
+
     <a-table
       :dataSource="records"
       :columns="columns"
@@ -81,6 +106,7 @@
       :pagination="pagination"
       @change="handleTableChange"
       rowKey="_id"
+      :row-selection="{ selectedRowKeys, onChange: onSelectChange }"
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'record_type'">
@@ -192,6 +218,58 @@
       </a-form-item>
       <a-checkbox v-if="secureDelete" v-model:checked="createBackup">保留备份记录（仅管理员可见）</a-checkbox>
     </a-modal>
+
+    <!-- 批量设置可见性对话框 -->
+    <a-modal
+      v-model:visible="batchVisibilityModalVisible"
+      title="批量设置可见性"
+      :confirm-loading="updatingVisibility"
+      @ok="updateBatchVisibility"
+    >
+      <a-form layout="vertical">
+        <a-form-item label="可见性">
+          <a-select
+            v-model:value="batchVisibility"
+            placeholder="选择可见性"
+            style="width: 100%"
+            allowClear
+          >
+            <a-select-option :value="RecordVisibility.PRIVATE">
+              <span style="font-weight: bold">仅自己可见</span>
+              <span style="display: block; font-size: 12px; color: #888">（最高级别隐私保护，只有您自己可以访问）</span>
+            </a-select-option>
+            <a-select-option :value="RecordVisibility.DOCTOR">
+              <span style="font-weight: bold">医生可见</span>
+              <span style="display: block; font-size: 12px; color: #888">（您和具有医生角色的用户可以访问）</span>
+            </a-select-option>
+            <a-select-option :value="RecordVisibility.RESEARCHER">
+              <span style="font-weight: bold">研究人员可见</span>
+              <span style="display: block; font-size: 12px; color: #888">（您、医生和研究人员可以访问）</span>
+            </a-select-option>
+            <a-select-option :value="RecordVisibility.PUBLIC">
+              <span style="font-weight: bold">所有人可见</span>
+              <span style="display: block; font-size: 12px; color: #888">（最低级别隐私保护，所有系统用户可以访问）</span>
+            </a-select-option>
+          </a-select>
+        </a-form-item>
+        
+        <a-alert v-if="batchVisibility === RecordVisibility.PRIVATE" 
+          type="success" 
+          message="您选择了最高级别的隐私保护，只有您自己能看到这些记录" 
+          style="margin-top: 8px"
+          show-icon />
+          
+        <a-alert v-if="batchVisibility === RecordVisibility.PUBLIC" 
+          type="warning" 
+          message="您选择了最低级别的隐私保护，所有用户都能看到这些记录" 
+          style="margin-top: 8px"
+          show-icon />
+          
+        <a-divider />
+        
+        <p><strong>注意:</strong> 此操作将修改 <a-tag color="blue">{{ selectedRecordIds.length }}</a-tag> 条健康记录的可见性设置。</p>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
@@ -206,28 +284,37 @@ import {
   ExportOutlined, 
   ImportOutlined,
   SearchOutlined,
-  EyeOutlined,
+  FilterOutlined,
   EditOutlined,
+  EyeOutlined,
   ShareAltOutlined,
-  DeleteOutlined,
-  HistoryOutlined,
   MoreOutlined,
-  UploadOutlined
+  HistoryOutlined,
+  DeleteOutlined,
+  FileOutlined,
+  DownloadOutlined,
+  StopOutlined,
+  CheckCircleOutlined
 } from '@ant-design/icons-vue';
 import {
   getHealthRecords,
   deleteHealthRecord,
   secureDeleteHealthRecord,
   exportHealthRecords,
-  importHealthRecords
+  importHealthRecords,
+  batchUpdateVisibility
 } from '@/api/health';
-import { RecordType, RecordVisibility, type HealthRecord, type GetRecordsParams } from '@/types/health';
+import { RecordVisibility, type HealthRecord, type GetRecordsParams } from '@/types/health';
 import type { UploadProps } from 'ant-design-vue';
+import { useRecordTypes } from '@/hooks/useRecordTypes';
 
 const router = useRouter();
-const loading = ref(false);
+const loading = ref(true);
 const records = ref<HealthRecord[]>([]);
 const total = ref(0);
+
+// 记录类型钩子
+const recordTypesHook = useRecordTypes();
 
 // 分页配置
 const pagination = reactive<TablePaginationConfig>({
@@ -295,19 +382,8 @@ const columns = [
   }
 ];
 
-// 记录类型选项
-const recordTypeOptions = [
-  { label: '常规检查', value: RecordType.GENERAL },
-  { label: '实验室检查', value: RecordType.LABORATORY },
-  { label: '用药记录', value: RecordType.MEDICATION },
-  { label: '影像检查', value: RecordType.IMAGING },
-  { label: '生命体征', value: RecordType.VITAL_SIGNS },
-  { label: '手术记录', value: RecordType.SURGERY },
-  { label: '疫苗接种', value: RecordType.VACCINATION },
-  { label: '过敏记录', value: RecordType.ALLERGY },
-  { label: '诊断结果', value: RecordType.DIAGNOSIS },
-  { label: '其他记录', value: RecordType.OTHER }
-];
+// 选项数据
+const recordTypeOptions = computed(() => recordTypesHook.recordTypeOptions.value);
 
 // 导入功能
 const importModalVisible = ref(false);
@@ -330,38 +406,26 @@ const secureDelete = ref(false);
 const createBackup = ref(true);
 const deleteReason = ref('');
 
+// 批量设置可见性功能
+const batchVisibilityModalVisible = ref(false);
+const batchVisibility = ref(RecordVisibility.PRIVATE);
+const selectedRecordIds = ref<string[]>([]);
+const updatingVisibility = ref(false);
+
+// 表格选择功能
+const selectedRowKeys = ref<(string | number)[]>([]);
+const onSelectChange = (keys: (string | number)[]) => {
+  selectedRecordIds.value = keys as string[];
+};
+
 // 获取记录类型名称
 const getRecordTypeName = (type: string): string => {
-  const typeMap: Record<string, string> = {
-    general: '常规检查',
-    laboratory: '实验室检查',
-    medication: '用药记录',
-    imaging: '影像检查',
-    vital_signs: '生命体征',
-    surgery: '手术记录',
-    vaccination: '疫苗接种',
-    allergy: '过敏记录',
-    diagnosis: '诊断结果',
-    other: '其他记录'
-  };
-  return typeMap[type] || '未知类型';
+  return recordTypesHook.getRecordTypeName(type) || type;
 };
 
 // 获取记录类型颜色
 const getRecordTypeColor = (type: string): string => {
-  const colorMap: Record<string, string> = {
-    general: '#1890ff',
-    laboratory: '#13c2c2',
-    medication: '#52c41a',
-    imaging: '#2f54eb',
-    vital_signs: '#722ed1',
-    surgery: '#eb2f96',
-    vaccination: '#faad14',
-    allergy: '#f5222d',
-    diagnosis: '#fa8c16',
-    other: '#bfbfbf'
-  };
-  return colorMap[type] || '#d9d9d9';
+  return recordTypesHook.getRecordTypeColor(type) || '#d9d9d9';
 };
 
 // 获取可见性名称
@@ -616,8 +680,70 @@ const navigateToAddRecord = () => {
   router.push('/patient/add-record');
 };
 
-// 初始化
+// 显示批量设置可见性对话框
+const showBatchVisibilityModal = () => {
+  // 获取选中的记录ID
+  if (selectedRowKeys.value.length === 0) {
+    message.warning('请先选择要更新的记录');
+    return;
+  }
+  selectedRecordIds.value = selectedRowKeys.value as string[];
+  batchVisibilityModalVisible.value = true;
+};
+
+// 批量更新可见性
+const updateBatchVisibility = async () => {
+  if (selectedRecordIds.value.length === 0) return;
+  
+  // 如果选择了最低隐私级别，再次确认
+  if (batchVisibility.value === RecordVisibility.PUBLIC) {
+    Modal.confirm({
+      title: '确认降低隐私保护级别',
+      content: `您即将将${selectedRecordIds.value.length}条记录的可见性设置为"所有人可见"，这是最低级别的隐私保护。确定要继续吗？`,
+      okText: '确认',
+      cancelText: '取消',
+      onOk: () => executeBatchVisibilityUpdate()
+    });
+    return;
+  }
+  
+  // 执行更新
+  executeBatchVisibilityUpdate();
+};
+
+// 执行批量可见性更新
+const executeBatchVisibilityUpdate = async () => {
+  updatingVisibility.value = true;
+  try {
+    const response = await batchUpdateVisibility({
+      record_ids: selectedRecordIds.value,
+      visibility: batchVisibility.value
+    });
+    
+    if (response.success) {
+      message.success(`成功更新 ${response.data?.updated_count || 0} 条记录的可见性`);
+      batchVisibilityModalVisible.value = false;
+      selectedRecordIds.value = [];
+      fetchRecords(); // 刷新列表
+    } else {
+      message.error(response.message || '批量更新可见性失败');
+    }
+  } catch (error) {
+    console.error('批量更新可见性失败:', error);
+    message.error('批量更新可见性失败');
+  } finally {
+    updatingVisibility.value = false;
+  }
+};
+
+// 添加记录
+const addRecord = () => {
+  router.push('/patient/add-record');
+};
+
+// 组件挂载时加载记录类型和记录列表
 onMounted(() => {
+  recordTypesHook.loadRecordTypes();
   fetchRecords();
 });
 </script>

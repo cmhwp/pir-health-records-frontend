@@ -238,7 +238,7 @@ import {
   UserOutlined
 } from '@ant-design/icons-vue';
 import { getShareableUsers, getShareableUserDetail, shareHealthRecord, getHealthRecords } from '@/api/health';
-import type { ShareableUser, ShareableUserDetail, ShareRecordRequest, RecordType, SharePermission } from '@/types/health';
+import type { ShareableUser, ShareableUserDetail, ShareRecordRequest, SharePermission } from '@/types/health';
 
 const router = useRouter();
 

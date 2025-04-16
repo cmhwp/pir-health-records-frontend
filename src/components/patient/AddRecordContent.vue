@@ -52,11 +52,28 @@
                     v-model:value="formState.record_data.visibility"
                     placeholder="请选择记录可见性"
                   >
-                    <a-select-option :value="RecordVisibility.PRIVATE">仅自己可见</a-select-option>
-                    <a-select-option :value="RecordVisibility.PUBLIC">所有人可见</a-select-option>
-                    <a-select-option :value="RecordVisibility.DOCTOR">医生可见</a-select-option>
-                    <a-select-option :value="RecordVisibility.RESEARCHER">研究人员可见</a-select-option>
+                    <a-select-option :value="RecordVisibility.PRIVATE">
+                      <span style="font-weight: bold">仅自己可见</span>
+                      <span style="display: block; font-size: 12px; color: #888">（最高级别隐私保护，只有您自己可以访问）</span>
+                    </a-select-option>
+                    <a-select-option :value="RecordVisibility.DOCTOR">
+                      <span style="font-weight: bold">医生可见</span>
+                      <span style="display: block; font-size: 12px; color: #888">（您和具有医生角色的用户可以访问）</span>
+                    </a-select-option>
+                    <a-select-option :value="RecordVisibility.RESEARCHER">
+                      <span style="font-weight: bold">研究人员可见</span>
+                      <span style="display: block; font-size: 12px; color: #888">（您、医生和研究人员可以访问）</span>
+                    </a-select-option>
+                    <a-select-option :value="RecordVisibility.PUBLIC">
+                      <span style="font-weight: bold">所有人可见</span>
+                      <span style="display: block; font-size: 12px; color: #888">（最低级别隐私保护，所有系统用户可以访问）</span>
+                    </a-select-option>
                   </a-select>
+                  <a-alert v-if="formState.record_data.visibility === RecordVisibility.PUBLIC" 
+                    type="warning" 
+                    message="您选择了最低级别的隐私保护，所有用户将可以看到此记录" 
+                    style="margin-top: 8px"
+                    show-icon />
                 </a-form-item>
               </a-col>
             </a-row>
@@ -64,10 +81,19 @@
             <a-row :gutter="16">
               <a-col :span="12">
                 <a-form-item name="institution" label="医疗机构">
-                  <a-input
+                  <a-select
                     v-model:value="formState.record_data.institution"
-                    placeholder="请输入医疗机构名称"
-                  />
+                    placeholder="请选择医疗机构"
+                    style="width: 100%"
+                    showSearch
+                    :filterOption="filterInstitution"
+                    :loading="loadingInstitutions"
+                  >
+                    <a-select-option v-for="inst in institutionOptions" :key="inst.id" :value="inst.name">
+                      {{ inst.name }}
+                      <span v-if="inst.address" style="color: #999; font-size: 12px;"> ({{ inst.address }})</span>
+                    </a-select-option>
+                  </a-select>
                 </a-form-item>
               </a-col>
               <a-col :span="12">
@@ -106,7 +132,7 @@
           </a-card>
           
           <!-- 用药记录特定字段 -->
-          <a-card v-if="formState.record_data.record_type === RecordType.MEDICATION" title="用药信息" style="margin-top: 16px">
+          <a-card v-if="formState.record_data.record_type === 'PRESCRIPTION'" title="用药信息" style="margin-top: 16px">
             <a-form-item name="record_data.medication.medication_name" label="药物名称">
               <a-input
                 v-model:value="formState.record_data.medication.medication_name"
@@ -248,7 +274,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { message } from 'ant-design-vue';
 import type { FormInstance } from 'ant-design-vue';
@@ -259,12 +285,14 @@ import {
   DeleteOutlined
 } from '@ant-design/icons-vue';
 import { createHealthRecord } from '@/api/health';
-import { RecordType, RecordVisibility, type CreateRecordRequest, type MedicationInfo } from '@/types/health';
+import { getInstitutions } from '@/api/patient';
+import { RecordVisibility, type CreateRecordRequest, type MedicationInfo, type InstitutionInfo } from '@/types/health';
+import { useRecordTypes } from '@/hooks/useRecordTypes';
 
 // Define an extended version of record data with required medication
 interface ExtendedRecordData {
   title: string;
-  record_type: RecordType;
+  record_type: string; // 修改为字符串类型
   description: string;
   record_date: string;
   institution: string;
@@ -286,11 +314,14 @@ const formRef = ref<FormInstance>();
 const submitting = ref(false);
 const pirProtected = ref(true);
 
+// 使用记录类型hook
+const { recordTypeOptions, isLoading: loadingRecordTypes } = useRecordTypes();
+
 // 表单状态
 const formState = reactive<ExtendedCreateRecordRequest>({
   record_data: {
     title: '',
-    record_type: RecordType.GENERAL,
+    record_type: '', // 使用空字符串作为初始值
     description: '',
     record_date: dayjs().format('YYYY-MM-DDTHH:mm:ss.SSS'),
     institution: '',
@@ -311,19 +342,12 @@ const formState = reactive<ExtendedCreateRecordRequest>({
   file_description: ''
 });
 
-// 记录类型选项
-const recordTypeOptions = [
-  { label: '常规检查', value: RecordType.GENERAL },
-  { label: '实验室检查', value: RecordType.LABORATORY },
-  { label: '用药记录', value: RecordType.MEDICATION },
-  { label: '影像检查', value: RecordType.IMAGING },
-  { label: '生命体征', value: RecordType.VITAL_SIGNS },
-  { label: '手术记录', value: RecordType.SURGERY },
-  { label: '疫苗接种', value: RecordType.VACCINATION },
-  { label: '过敏记录', value: RecordType.ALLERGY },
-  { label: '诊断结果', value: RecordType.DIAGNOSIS },
-  { label: '其他记录', value: RecordType.OTHER }
-];
+// 监听recordTypeOptions变化，设置默认值
+watch(() => recordTypeOptions.value, (newOptions) => {
+  if (newOptions.length > 0 && !formState.record_data.record_type) {
+    formState.record_data.record_type = newOptions[0].value;
+  }
+}, { immediate: true });
 
 // 表单验证规则
 const rules = {};
@@ -380,9 +404,9 @@ const handleMedicationEndDateChange = (value: dayjs.Dayjs | null) => {
 };
 
 // 处理记录类型变化
-const handleRecordTypeChange = (value: RecordType) => {
+const handleRecordTypeChange = (value: string) => {
   // 不需要检查medication是否存在，因为在formState初始化时已经创建
-  if (value === RecordType.MEDICATION) {
+  if (value === 'medication') { // 使用字符串值比较
     // 可以重置medication字段为默认值
     formState.record_data.medication = {
       medication_name: '',
@@ -487,11 +511,41 @@ const goBack = () => {
   router.back();
 };
 
-// 初始化
+// 机构数据
+const institutionOptions = ref<InstitutionInfo[]>([]);
+const loadingInstitutions = ref(false);
+
+// 过滤医疗机构选项
+const filterInstitution = (input: string, option: any) => {
+  return option.children[0].toLowerCase().indexOf(input.toLowerCase()) >= 0;
+};
+
+// 加载医疗机构
+const loadInstitutions = async () => {
+  loadingInstitutions.value = true;
+  try {
+    const response = await getInstitutions();
+    if (response.success && response.data) {
+      institutionOptions.value = response.data.institutions;
+    } else {
+      message.error(response.message || '获取医疗机构列表失败');
+    }
+  } catch (error) {
+    console.error('获取医疗机构列表失败:', error);
+    message.error('获取医疗机构列表失败');
+  } finally {
+    loadingInstitutions.value = false;
+  }
+};
+
+// 组件挂载时初始化
 onMounted(() => {
   // 初始化记录日期为今天
   recordDate.value = dayjs();
   formState.record_data.record_date = dayjs().format('YYYY-MM-DDTHH:mm:ss.SSS');
+  
+  // 加载医疗机构列表
+  loadInstitutions();
 });
 </script>
 

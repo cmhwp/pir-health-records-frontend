@@ -171,7 +171,7 @@
       </a-descriptions>
       
       <div style="margin-top: 24px">
-        <a-button type="primary" @click="editRecordType(selectedRecordType)">
+        <a-button type="primary" @click="selectedRecordType && editRecordType(selectedRecordType)">
           <template #icon><edit-outlined /></template>
           编辑信息
         </a-button>

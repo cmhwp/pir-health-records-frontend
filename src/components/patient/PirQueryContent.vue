@@ -229,9 +229,10 @@ import {
   FileOutlined,
   DownloadOutlined
 } from '@ant-design/icons-vue';
-import { pirQueryHealthRecords, getHealthRecord, getRecordFileUrl } from '@/api/health';
-import { RecordType, type HealthRecord, type PIRQueryRequest } from '@/types/health';
+import { pirQueryHealthRecords, getHealthRecord, getRecordFileUrl, getRecordTypes } from '@/api/health';
+import { type HealthRecord, type PIRQueryRequest } from '@/types/health';
 import type { TablePaginationConfig } from 'ant-design-vue';
+import { useRecordTypes } from '@/hooks/useRecordTypes';
 
 // 数据加载状态
 const loading = ref(false);
@@ -247,6 +248,9 @@ const queryParams = reactive<PIRQueryRequest>({
 
 // 日期选择器值
 const dateRange = ref<[dayjs.Dayjs, dayjs.Dayjs] | null>(null);
+
+// 使用hooks获取记录类型相关函数
+const { getRecordTypeName, getRecordTypeColor, recordTypeOptions: hookRecordTypeOptions, loadRecordTypes: loadRecordTypesFromHook } = useRecordTypes();
 
 // 记录列表数据
 const records = ref<HealthRecord[]>([]);
@@ -309,19 +313,8 @@ const columns = [
   }
 ];
 
-// 记录类型选项
-const recordTypeOptions = [
-  { label: '常规检查', value: RecordType.GENERAL },
-  { label: '实验室检查', value: RecordType.LABORATORY },
-  { label: '用药记录', value: RecordType.MEDICATION },
-  { label: '影像检查', value: RecordType.IMAGING },
-  { label: '生命体征', value: RecordType.VITAL_SIGNS },
-  { label: '手术记录', value: RecordType.SURGERY },
-  { label: '疫苗接种', value: RecordType.VACCINATION },
-  { label: '过敏记录', value: RecordType.ALLERGY },
-  { label: '诊断结果', value: RecordType.DIAGNOSIS },
-  { label: '其他记录', value: RecordType.OTHER }
-];
+// 记录类型选项，用于下拉菜单
+const recordTypeOptions = ref<{label: string; value: string; color?: string}[]>([]);
 
 // 记录详情
 const recordDrawerVisible = ref(false);
@@ -336,40 +329,6 @@ const handleDateChange = (dates: any) => {
     queryParams.start_date = undefined;
     queryParams.end_date = undefined;
   }
-};
-
-// 获取记录类型名称
-const getRecordTypeName = (type: string): string => {
-  const typeMap: Record<string, string> = {
-    general: '常规检查',
-    laboratory: '实验室检查',
-    medication: '用药记录',
-    imaging: '影像检查',
-    vital_signs: '生命体征',
-    surgery: '手术记录',
-    vaccination: '疫苗接种',
-    allergy: '过敏记录',
-    diagnosis: '诊断结果',
-    other: '其他记录'
-  };
-  return typeMap[type] || '未知类型';
-};
-
-// 获取记录类型颜色
-const getRecordTypeColor = (type: string): string => {
-  const colorMap: Record<string, string> = {
-    general: '#1890ff',
-    laboratory: '#13c2c2',
-    medication: '#52c41a',
-    imaging: '#2f54eb',
-    vital_signs: '#722ed1',
-    surgery: '#eb2f96',
-    vaccination: '#faad14',
-    allergy: '#f5222d',
-    diagnosis: '#fa8c16',
-    other: '#bfbfbf'
-  };
-  return colorMap[type] || '#d9d9d9';
 };
 
 // 获取可见性名称
@@ -402,6 +361,17 @@ const formatFileSize = (size: number): string => {
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(2)} KB`;
   return `${(size / 1024 / 1024).toFixed(2)} MB`;
+};
+
+// 加载记录类型
+const loadRecordTypes = async () => {
+  try {
+    await loadRecordTypesFromHook();
+    recordTypeOptions.value = hookRecordTypeOptions.value;
+  } catch (error) {
+    console.error('获取记录类型失败:', error);
+    message.error('获取记录类型失败');
+  }
 };
 
 // 执行PIR查询
@@ -473,9 +443,9 @@ const downloadFile = (fileName: string) => {
   window.open(url, '_blank');
 };
 
-// 初始化
+// 组件挂载时加载记录类型
 onMounted(() => {
-  // 可以预加载一些数据，或者留空等用户主动搜索
+  loadRecordTypes();
 });
 </script>
 

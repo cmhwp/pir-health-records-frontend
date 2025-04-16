@@ -32,7 +32,7 @@
                   <template #title>
                     <a @click="viewRecord(item._id)">{{ item.title }}</a>
                   </template>
-                  <template #description>
+                  <template #description> 
                     <div>
                       <a-tag :color="getRecordTypeColor(item.record_type)">{{ getRecordTypeName(item.record_type) }}</a-tag>
                       <span style="margin-left: 8px">{{ formatDate(item.record_date) }}</span>
@@ -309,9 +309,19 @@ import { ref, reactive, computed, onMounted, inject } from 'vue';
 import { useRouter } from 'vue-router';
 import { message } from 'ant-design-vue';
 import dayjs from 'dayjs';
-import { 
-  FileOutlined, 
-  EyeOutlined, 
+import * as echarts from 'echarts/core';
+import {
+  TitleComponent,
+  TooltipComponent,
+  LegendComponent,
+  GridComponent,
+} from 'echarts/components';
+import { BarChart, LineChart, PieChart } from 'echarts/charts';
+import { UniversalTransition } from 'echarts/features';
+import { CanvasRenderer } from 'echarts/renderers';
+import {
+  FileOutlined,
+  EyeOutlined,
   ShareAltOutlined,
   DownloadOutlined,
   MedicineBoxOutlined,
@@ -320,11 +330,12 @@ import {
   ClockCircleOutlined,
   UserOutlined
 } from '@ant-design/icons-vue';
-import { getHealthRecords, getHealthRecord, getHealthStatistics, getRecordFileUrl, shareHealthRecord, getPirSettings } from '@/api/health';
-import { RecordType, RecordVisibility, SharePermission, type HealthRecord } from '@/types/health';
+import { getHealthRecords, getHealthStatistics, getPirSettings, getHealthRecord, shareHealthRecord, getRecordFileUrl } from '@/api/health';
+import { RecordVisibility, SharePermission, type HealthRecord } from '@/types/health';
 import type { User } from '@/types/auth';
 import { getUsers } from '@/api/admin';
-
+import { useRecordTypes } from '@/hooks/useRecordTypes';
+ 
 const router = useRouter();
 
 // 统计数据
@@ -335,8 +346,28 @@ const recentRecords = ref<HealthRecord[]>([]);
 const pirUsageRatio = ref(0);
 const privacyScore = ref(0);
 
-// 处方数据
-const activePrescriptions = ref<any[]>([]);
+// 模拟处方数据
+const activePrescriptions = ref([
+  {
+    id: 1,
+    diagnosis: '感冒',
+    doctor_name: '张医生',
+    items: [
+      { name: '感冒灵颗粒', dosage: '每次1袋，一日3次' },
+      { name: '板蓝根冲剂', dosage: '每次1袋，一日3次' }
+    ],
+    valid_until: dayjs().add(5, 'day').toISOString()
+  },
+  {
+    id: 2,
+    diagnosis: '高血压',
+    doctor_name: '李医生',
+    items: [
+      { name: '苯磺酸氨氯地平片', dosage: '每次5mg，一日1次' }
+    ],
+    valid_until: dayjs().add(30, 'day').toISOString()
+  }
+]);
 
 // 记录详情
 const recordDrawerVisible = ref(false);
@@ -362,6 +393,9 @@ const encryptionLevelMap = {
   medium: '中等',
   high: '高'
 };
+
+// 使用hook获取记录类型相关函数
+const { getRecordTypeName, getRecordTypeColor, getRecordTypeShort } = useRecordTypes();
 
 // 统计卡片数据
 const statisticsCards = computed(() => [
@@ -412,57 +446,6 @@ const privacyRating = computed(() => {
 // 处理隐私评分显示格式
 const format = (percent: number) => {
   return `${percent}`;
-};
-
-// 获取记录类型名称
-const getRecordTypeName = (type: string): string => {
-  const typeMap: Record<string, string> = {
-    general: '常规检查',
-    laboratory: '实验室检查',
-    medication: '用药记录',
-    imaging: '影像检查',
-    vital_signs: '生命体征',
-    surgery: '手术记录',
-    vaccination: '疫苗接种',
-    allergy: '过敏记录',
-    diagnosis: '诊断结果',
-    other: '其他记录'
-  };
-  return typeMap[type] || '未知类型';
-};
-
-// 获取记录类型颜色
-const getRecordTypeColor = (type: string): string => {
-  const colorMap: Record<string, string> = {
-    general: '#1890ff',
-    laboratory: '#13c2c2',
-    medication: '#52c41a',
-    imaging: '#2f54eb',
-    vital_signs: '#722ed1',
-    surgery: '#eb2f96',
-    vaccination: '#faad14',
-    allergy: '#f5222d',
-    diagnosis: '#fa8c16',
-    other: '#bfbfbf'
-  };
-  return colorMap[type] || '#d9d9d9';
-};
-
-// 获取记录类型简称
-const getRecordTypeShort = (type: string): string => {
-  const shortMap: Record<string, string> = {
-    general: '常规',
-    laboratory: '化验',
-    medication: '用药',
-    imaging: '影像',
-    vital_signs: '体征',
-    surgery: '手术',
-    vaccination: '疫苗',
-    allergy: '过敏',
-    diagnosis: '诊断',
-    other: '其他'
-  };
-  return shortMap[type]?.charAt(0) || '?';
 };
 
 // 获取可见性名称
@@ -722,26 +705,13 @@ onMounted(async () => {
       fetchPrivacySettings()
     ]);
 
-    // 获取处方数据
-    try {
-      const prescriptionsResponse = await getPrescriptions({ status: 'active', limit: 3 });
-      if (prescriptionsResponse.success && prescriptionsResponse.data) {
-        activePrescriptions.value = prescriptionsResponse.data.prescriptions;
-      }
-    } catch (error) {
-      console.error('获取处方数据失败:', error);
-    }
+    // 已经在前面设置了模拟处方数据，不需要调用API
   } catch (error) {
     console.error('加载仪表盘数据失败:', error);
   } finally {
     loading.value = false;
   }
 });
-
-// Mock implementation for prescription APIs
-const getPrescriptions = async (params: Record<string, any>) => {
-  return { success: true, data: { prescriptions: [] } };
-};
 </script>
 
 <style scoped>

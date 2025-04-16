@@ -176,8 +176,9 @@ import type {
   Patient
 } from '@/types/doctor';
 import ViewRecordDetail from './ViewRecordDetail.vue';
+import { getRecordTypes } from '@/api/health';
 
-// 确保query_params始终存在
+// 查询表单
 const queryForm = reactive<PIRQueryPatientRequest>({
   patient_id: undefined as number | undefined,
   query_params: {
@@ -202,23 +203,13 @@ const currentRecord = ref<any>(null);
 const decryptKey = ref('');
 const decrypting = ref(false);
 
-// 记录类型选项
-const recordTypeOptions = [
-  { label: '一般记录', value: 'general' },
-  { label: '实验室检查', value: 'laboratory' },
-  { label: '药物治疗', value: 'medication' },
-  { label: '影像检查', value: 'imaging' },
-  { label: '生命体征', value: 'vital_signs' },
-  { label: '手术记录', value: 'surgery' },
-  { label: '疫苗接种', value: 'vaccination' },
-  { label: '过敏记录', value: 'allergy' },
-  { label: '诊断记录', value: 'diagnosis' },
-  { label: '其他', value: 'other' },
-];
+// 选项数据
+const recordTypeOptions = ref<{ label: string; value: string; color?: string; icon?: string }[]>([]);
 
 // 初始化
 onMounted(() => {
   loadPatients();
+  loadRecordTypes();
 });
 
 // 加载患者列表
@@ -236,6 +227,24 @@ const loadPatients = async () => {
   } catch (error: any) {
     console.error('获取患者列表失败:', error);
     message.error('获取患者列表失败，请稍后重试');
+  }
+};
+
+// 加载记录类型
+const loadRecordTypes = async () => {
+  try {
+    const response = await getRecordTypes();
+    if (response.success && response.data) {
+      recordTypeOptions.value = response.data.record_types.map(type => ({
+        label: type.name,
+        value: type.code,
+        color: type.color,
+        icon: type.icon
+      }));
+    }
+  } catch (error) {
+    console.error('获取记录类型失败:', error);
+    message.error('获取记录类型失败');
   }
 };
 

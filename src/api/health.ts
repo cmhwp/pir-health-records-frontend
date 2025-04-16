@@ -32,7 +32,9 @@ import type {
   UpdateRecordRequest,
   ViewSharedRecordResponse,
   ShareableUsersResponse,
-  ShareableUserDetail
+  ShareableUserDetail,
+  RecordTypesResponse,
+  InstitutionsResponse
 } from '../types/health';
 
 const API_PATH = '/health';
@@ -422,4 +424,18 @@ export const accessSharedRecordByKey = async (
   accessKey: string
 ): Promise<ApiResponse<ViewSharedRecordResponse>> => {
   return request.get(`${API_PATH}/shared/access/${accessKey}`);
+};
+
+/**
+ * 获取记录类型列表
+ */
+export const getRecordTypes = (): Promise<ApiResponse<RecordTypesResponse>> => {
+  return request.get('/health/record-types');
+};
+
+/**
+ * 获取医疗机构列表
+ */
+export const getInstitutions = (): Promise<ApiResponse<InstitutionsResponse>> => {
+  return request.get(`${API_PATH}/institutions`);
 }; 

@@ -119,12 +119,16 @@ import { UserOutlined } from '@ant-design/icons-vue';
 import dayjs from 'dayjs';
 import { accessSharedRecordByKey } from '@/api/health';
 import type { HealthRecord } from '@/types/health';
+import { useRecordTypes } from '@/hooks/useRecordTypes';
 
 const router = useRouter();
 const record = ref<HealthRecord | null>(null);
 const sharedInfo = ref<any>(null);
 const loading = ref<boolean>(true);
 const error = ref<{ title: string; message: string } | null>(null);
+
+// 使用hook获取记录类型相关函数
+const { getRecordTypeName, getRecordTypeColor } = useRecordTypes();
 
 // 从URL中获取access_key
 const getAccessKeyFromUrl = (): string | null => {
@@ -172,40 +176,6 @@ const loadSharedRecord = async () => {
 // 跳转到登录页面
 const handleSignIn = () => {
   router.push('/auth/login');
-};
-
-// 获取记录类型名称
-const getRecordTypeName = (type: string): string => {
-  const typeMap: Record<string, string> = {
-    general: '常规检查',
-    laboratory: '实验室检查',
-    medication: '用药记录',
-    imaging: '影像检查',
-    vital_signs: '生命体征',
-    surgery: '手术记录',
-    vaccination: '疫苗接种',
-    allergy: '过敏记录',
-    diagnosis: '诊断结果',
-    other: '其他记录'
-  };
-  return typeMap[type] || '未知类型';
-};
-
-// 获取记录类型颜色
-const getRecordTypeColor = (type: string): string => {
-  const colorMap: Record<string, string> = {
-    general: '#1890ff',
-    laboratory: '#13c2c2',
-    medication: '#52c41a',
-    imaging: '#2f54eb',
-    vital_signs: '#722ed1',
-    surgery: '#eb2f96',
-    vaccination: '#faad14',
-    allergy: '#f5222d',
-    diagnosis: '#fa8c16',
-    other: '#bfbfbf'
-  };
-  return colorMap[type] || '#d9d9d9';
 };
 
 // 获取权限名称

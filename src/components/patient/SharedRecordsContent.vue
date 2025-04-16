@@ -419,6 +419,7 @@ import type {
   ShareableUserDetail
 } from '@/types/health';
 import type { TablePaginationConfig } from 'ant-design-vue';
+import { useRecordTypes } from '@/hooks/useRecordTypes';
 
 const router = useRouter();
 const route = useRoute();
@@ -555,6 +556,9 @@ const currentShareRecord = ref<SharedRecordWithUser | null>(null);
 const shareLink = ref<string>('');
 const shareLinkInput = ref<HTMLInputElement | null>(null);
 
+// 使用hook获取记录类型相关函数
+const { getRecordTypeName, getRecordTypeColor } = useRecordTypes();
+
 // 获取我共享的记录
 const fetchSharedByMe = async () => {
   loadingSharedByMe.value = true;
@@ -639,40 +643,6 @@ const handleSharedWithMeTableChange = (pagination: TablePaginationConfig) => {
   sharedWithMePagination.current = pagination.current || 1;
   sharedWithMePagination.pageSize = pagination.pageSize || 10;
   fetchSharedWithMe();
-};
-
-// 获取记录类型名称
-const getRecordTypeName = (type: string): string => {
-  const typeMap: Record<string, string> = {
-    general: '常规检查',
-    laboratory: '实验室检查',
-    medication: '用药记录',
-    imaging: '影像检查',
-    vital_signs: '生命体征',
-    surgery: '手术记录',
-    vaccination: '疫苗接种',
-    allergy: '过敏记录',
-    diagnosis: '诊断结果',
-    other: '其他记录'
-  };
-  return typeMap[type] || '未知类型';
-};
-
-// 获取记录类型颜色
-const getRecordTypeColor = (type: string): string => {
-  const colorMap: Record<string, string> = {
-    general: '#1890ff',
-    laboratory: '#13c2c2',
-    medication: '#52c41a',
-    imaging: '#2f54eb',
-    vital_signs: '#722ed1',
-    surgery: '#eb2f96',
-    vaccination: '#faad14',
-    allergy: '#f5222d',
-    diagnosis: '#fa8c16',
-    other: '#bfbfbf'
-  };
-  return colorMap[type] || '#d9d9d9';
 };
 
 // 获取可见性名称

@@ -42,11 +42,33 @@
                       v-model:value="formState.visibility"
                       placeholder="请选择记录可见性"
                     >
-                      <a-select-option :value="RecordVisibility.PRIVATE">仅自己可见</a-select-option>
-                      <a-select-option :value="RecordVisibility.PUBLIC">所有人可见</a-select-option>
-                      <a-select-option :value="RecordVisibility.DOCTOR">医生可见</a-select-option>
-                      <a-select-option :value="RecordVisibility.RESEARCHER">研究人员可见</a-select-option>
+                      <a-select-option :value="RecordVisibility.PRIVATE">
+                        <span style="font-weight: bold">仅自己可见</span>
+                        <span style="display: block; font-size: 12px; color: #888">（最高级别隐私保护，只有您自己可以访问）</span>
+                      </a-select-option>
+                      <a-select-option :value="RecordVisibility.DOCTOR">
+                        <span style="font-weight: bold">医生可见</span>
+                        <span style="display: block; font-size: 12px; color: #888">（您和具有医生角色的用户可以访问）</span>
+                      </a-select-option>
+                      <a-select-option :value="RecordVisibility.RESEARCHER">
+                        <span style="font-weight: bold">研究人员可见</span>
+                        <span style="display: block; font-size: 12px; color: #888">（您、医生和研究人员可以访问）</span>
+                      </a-select-option>
+                      <a-select-option :value="RecordVisibility.PUBLIC">
+                        <span style="font-weight: bold">所有人可见</span>
+                        <span style="display: block; font-size: 12px; color: #888">（最低级别隐私保护，所有系统用户可以访问）</span>
+                      </a-select-option>
                     </a-select>
+                    <a-alert v-if="formState.visibility === RecordVisibility.PUBLIC" 
+                      type="warning" 
+                      message="您选择了最低级别的隐私保护，所有用户将可以看到此记录" 
+                      style="margin-top: 8px"
+                      show-icon />
+                    <a-alert v-if="visibilityChanged" 
+                      type="info" 
+                      message="更改可见性将影响哪些人可以访问此记录" 
+                      style="margin-top: 8px"
+                      show-icon />
                   </a-form-item>
                 </a-col>
               </a-row>
@@ -54,10 +76,19 @@
               <a-row :gutter="16">
                 <a-col :span="12">
                   <a-form-item name="institution" label="医疗机构">
-                    <a-input
+                    <a-select
                       v-model:value="formState.institution"
-                      placeholder="请输入医疗机构名称"
-                    />
+                      placeholder="请选择医疗机构"
+                      style="width: 100%"
+                      showSearch
+                      :filterOption="filterInstitution"
+                      :loading="loadingInstitutions"
+                    >
+                      <a-select-option v-for="inst in institutionOptions" :key="inst.id" :value="inst.name">
+                        {{ inst.name }}
+                        <span v-if="inst.address" style="color: #999; font-size: 12px;"> ({{ inst.address }})</span>
+                      </a-select-option>
+                    </a-select>
                   </a-form-item>
                 </a-col>
                 <a-col :span="12">
@@ -96,7 +127,7 @@
             </a-card>
             
             <!-- 用药记录特定字段 -->
-            <a-card v-if="record.record_type === RecordType.MEDICATION" title="用药信息" style="margin-top: 16px">
+            <a-card v-if="record.record_type === 'medication'" title="用药信息" style="margin-top: 16px">
               <a-form-item name="medication_name" label="药物名称" required>
                 <a-input
                   v-model:value="formState.medication.medication_name"
@@ -246,7 +277,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { message, Form } from 'ant-design-vue';
 import type { FormInstance } from 'ant-design-vue';
@@ -261,19 +292,24 @@ import {
   getHealthRecord,
   updateHealthRecord,
   createRecordVersion,
-  getRecordFileUrl
+  getRecordFileUrl,
+  getInstitutions
 } from '@/api/health';
 import {
-  RecordType,
   RecordVisibility,
   type HealthRecord,
-  type UpdateRecordRequest
+  type UpdateRecordRequest,
+  type InstitutionInfo
 } from '@/types/health';
+import { useRecordTypes } from '@/hooks/useRecordTypes';
 
 const route = useRoute();
 const router = useRouter();
 const formRef = ref<FormInstance>();
 const recordId = computed(() => route.params.id as string);
+
+// 使用hook获取记录类型
+const { getRecordTypeName } = useRecordTypes();
 
 // 记录数据
 const loading = ref(true);
@@ -281,7 +317,7 @@ const record = ref<HealthRecord | null>(null);
 const saving = ref(false);
 
 // 表单状态
-const formState = reactive<UpdateRecordRequest>({
+const formState = reactive({
   title: '',
   description: '',
   record_date: '',
@@ -316,11 +352,51 @@ const creatingVersion = ref(false);
 const newVersionDescription = ref('');
 const versionChanges = ref<string[]>([]);
 
+// 医疗机构
+const institutionOptions = ref<InstitutionInfo[]>([]);
+const loadingInstitutions = ref(false);
+
+// 监听可见性变化
+const originalVisibility = ref('');
+const visibilityChanged = ref(false);
+
+// 监听表单变化
+watch(() => formState.visibility, (newVal, oldVal) => {
+  if (originalVisibility.value && newVal !== originalVisibility.value) {
+    visibilityChanged.value = true;
+  } else {
+    visibilityChanged.value = false;
+  }
+}, { deep: true });
+
 // 表单验证规则
 const rules = {
   title: [{ required: true, message: '请输入记录标题', trigger: 'blur' }],
   record_date: [{ required: true, message: '请选择记录日期', trigger: 'change' }],
   medication_name: [{ required: true, message: '请输入药物名称', trigger: 'blur' }]
+};
+
+// 过滤医疗机构选项
+const filterInstitution = (input: string, option: any) => {
+  return option.children[0].toLowerCase().indexOf(input.toLowerCase()) >= 0;
+};
+
+// 加载医疗机构
+const loadInstitutions = async () => {
+  loadingInstitutions.value = true;
+  try {
+    const response = await getInstitutions();
+    if (response.success && response.data) {
+      institutionOptions.value = response.data.institutions;
+    } else {
+      message.error(response.message || '获取医疗机构列表失败');
+    }
+  } catch (error) {
+    console.error('获取医疗机构列表失败:', error);
+    message.error('获取医疗机构列表失败');
+  } finally {
+    loadingInstitutions.value = false;
+  }
 };
 
 // 获取记录详情
@@ -330,45 +406,41 @@ const fetchRecordDetail = async () => {
     const response = await getHealthRecord(recordId.value);
     if (response.success && response.data) {
       record.value = response.data.record;
+      sqlId.value = response.data.sql_id;
       
-      // 填充表单数据
+      // 初始化表单值
       formState.title = record.value.title;
       formState.description = record.value.description || '';
-      formState.record_date = record.value.record_date;
       formState.institution = record.value.institution || '';
       formState.doctor_name = record.value.doctor_name || '';
       formState.visibility = record.value.visibility;
       formState.tags = record.value.tags || '';
+      formState.record_date = record.value.record_date;
       
-      // 设置日期选择器值
-      if (record.value.record_date) {
-        recordDate.value = dayjs(record.value.record_date);
+      // 设置原始可见性，用于比较
+      originalVisibility.value = record.value.visibility;
+      
+      if (record.value.medication) {
+        formState.medication = { ...record.value.medication };
       }
       
-      // 设置标签
-      if (record.value.tags) {
-        tags.value = record.value.tags.split(',').filter(tag => tag.trim());
+      // 转换标签为数组
+      if (formState.tags) {
+        tags.value = formState.tags.split(',').filter(tag => tag.trim().length > 0);
       }
       
-      // 设置用药记录特定字段
-      if (record.value.record_type === RecordType.MEDICATION && record.value.medication) {
-        formState.medication = {
-          medication_name: record.value.medication.medication_name || '',
-          dosage: record.value.medication.dosage || '',
-          frequency: record.value.medication.frequency || '',
-          start_date: record.value.medication.start_date || '',
-          end_date: record.value.medication.end_date || '',
-          instructions: record.value.medication.instructions || '',
-          side_effects: record.value.medication.side_effects || ''
-        };
-        
-        if (record.value.medication.start_date) {
-          medicationStartDate.value = dayjs(record.value.medication.start_date);
-        }
-        
-        if (record.value.medication.end_date) {
-          medicationEndDate.value = dayjs(record.value.medication.end_date);
-        }
+      // 设置日期
+      if (formState.record_date) {
+        recordDate.value = dayjs(formState.record_date);
+      }
+      
+      // 设置用药相关日期
+      if (formState.medication?.start_date) {
+        medicationStartDate.value = dayjs(formState.medication.start_date);
+      }
+      
+      if (formState.medication?.end_date) {
+        medicationEndDate.value = dayjs(formState.medication.end_date);
       }
     } else {
       message.error(response.message || '获取健康记录失败');
@@ -448,7 +520,7 @@ const handleSave = async () => {
       };
       
       // 如果是用药记录，添加用药信息
-      if (record.value?.record_type === RecordType.MEDICATION) {
+      if (record.value?.record_type === 'medication') {
         updateData.medication = formState.medication;
       }
       
@@ -510,7 +582,7 @@ const confirmCreateVersion = async () => {
         doctor_name: formState.doctor_name,
         visibility: formState.visibility,
         tags: formState.tags,
-        ...(record.value?.record_type === RecordType.MEDICATION ? { medication: formState.medication } : {})
+        ...(record.value?.record_type === 'medication' ? { medication: formState.medication } : {})
       }
     });
     
@@ -539,6 +611,7 @@ const goBack = () => {
 // 初始化
 onMounted(() => {
   fetchRecordDetail();
+  loadInstitutions();
 });
 </script>
 
