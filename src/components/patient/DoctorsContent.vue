@@ -82,13 +82,21 @@
                       <div v-if="item.info?.years_of_experience">
                         经验: {{ item.info.years_of_experience }} 年
                       </div>
-                      <a-tag 
-                        v-if="item.interaction?.has_interaction" 
-                        color="blue"
-                        style="margin-top: 8px"
-                      >
-                        曾就诊医生
-                      </a-tag>
+                      <div style="margin-top: 8px">
+                        <a-tag 
+                          v-if="item.interaction?.has_interaction" 
+                          color="blue"
+                        >
+                          曾就诊医生
+                        </a-tag>
+                        <a-tag 
+                          v-if="item.interaction?.has_prescription" 
+                          color="green"
+                          style="margin-left: 4px"
+                        >
+                          最近问诊
+                        </a-tag>
+                      </div>
                     </div>
                   </template>
                 </a-card-meta>
@@ -114,12 +122,21 @@
             </a-avatar>
             <div class="doctor-info">
               <h2>{{ currentDoctor.full_name }}</h2>
-              <a-tag 
-                v-if="currentDoctor.interaction?.has_interaction" 
-                color="blue"
-              >
-                曾就诊医生
-              </a-tag>
+              <div>
+                <a-tag 
+                  v-if="currentDoctor.interaction?.has_interaction" 
+                  color="blue"
+                >
+                  曾就诊医生
+                </a-tag>
+                <a-tag 
+                  v-if="currentDoctor.interaction?.has_prescription" 
+                  color="green"
+                  style="margin-left: 4px"
+                >
+                  最近问诊
+                </a-tag>
+              </div>
             </div>
           </div>
           
@@ -274,11 +291,24 @@ const fetchDoctors = async () => {
       department: filters.department || undefined,
       specialty: filters.specialty || undefined,
       sort_by: filters.sort_by,
-      sort_order: filters.sort_order
+      sort_order: filters.sort_order,
+      include_prescription_history: true // 请求包含处方历史信息
     });
     
     if (response.success && response.data) {
       doctors.value = response.data.doctors;
+      
+      // 确保每个医生对象都有interaction属性
+      doctors.value.forEach(doctor => {
+        if (!doctor.interaction) {
+          doctor.interaction = {
+            record_count: 0,
+            has_interaction: false,
+            has_prescription: false
+          };
+        }
+      });
+      
       pagination.total = response.data.pagination.total;
       
       // 更新筛选选项
@@ -287,12 +317,16 @@ const fetchDoctors = async () => {
         filterOptions.departments = Object.keys(response.data.filters.departments || {});
         filterOptions.specialties = Object.keys(response.data.filters.specialties || {});
       }
+      
+      return doctors.value; // 返回医生数组以便链式调用
     } else {
       message.error(response.message || '获取医生列表失败');
+      return [];
     }
   } catch (error: any) {
     console.error('获取医生列表失败:', error);
     message.error('获取医生列表失败: ' + (error.message || '未知错误'));
+    return [];
   } finally {
     loading.value = false;
   }
@@ -300,7 +334,7 @@ const fetchDoctors = async () => {
 
 // 获取处方历史
 const fetchPrescriptions = async () => {
-  if (!currentDoctor.value?.id) return;
+  if (!currentDoctor.value?.id) return Promise.resolve([]);
   
   try {
     prescriptionsLoading.value = true;
@@ -313,12 +347,30 @@ const fetchPrescriptions = async () => {
     if (response.success && response.data) {
       prescriptions.value = response.data.prescriptions;
       prescriptionPagination.total = response.data.pagination.total;
+      
+      // 检查医生是否有处方历史，并设置标签
+      if (currentDoctor.value && !currentDoctor.value.interaction) {
+        currentDoctor.value.interaction = {
+          record_count: 0,
+          has_interaction: false,
+          has_prescription: false
+        };
+      }
+      
+      if (currentDoctor.value && currentDoctor.value.interaction) {
+        // 如果有处方历史，设置has_prescription为true
+        currentDoctor.value.interaction.has_prescription = prescriptions.value.length > 0;
+      }
+      
+      return prescriptions.value;
     } else {
       message.error(response.message || '获取处方历史失败');
+      return [];
     }
   } catch (error: any) {
     console.error('获取处方历史失败:', error);
     message.error('获取处方历史失败: ' + (error.message || '未知错误'));
+    return [];
   } finally {
     prescriptionsLoading.value = false;
   }
@@ -350,8 +402,45 @@ const getStatusText = (status: PrescriptionStatus): string => {
 
 // 组件挂载时加载数据
 onMounted(() => {
-  fetchDoctors();
+  fetchDoctors().then(() => {
+    // 获取医生列表后，检查每个医生是否有处方历史
+    checkPrescriptionHistories(doctors.value.map(d => d.id));
+  });
 });
+
+// 检查多个医生的处方历史
+const checkPrescriptionHistories = async (doctorIds: number[]): Promise<void> => {
+  if (!doctorIds.length) return;
+  
+  const promises = doctorIds.map(async (id) => {
+    // 找到对应的医生对象
+    const doctor = doctors.value.find(d => d.id === id);
+    if (!doctor) return null;
+    
+    // 设置当前医生，以便fetchPrescriptions可以使用
+    currentDoctor.value = doctor;
+    
+    // 获取处方历史并返回结果
+    const prescriptionList = await fetchPrescriptions();
+    return {
+      doctorId: id,
+      hasPrescription: prescriptionList.length > 0
+    };
+  });
+  
+  // 等待所有请求完成
+  const results = await Promise.all(promises);
+  
+  // 更新医生列表的交互状态
+  results.forEach(result => {
+    if (!result) return;
+    
+    const doctor = doctors.value.find(d => d.id === result.doctorId);
+    if (doctor && doctor.interaction) {
+      doctor.interaction.has_prescription = result.hasPrescription;
+    }
+  });
+};
 </script>
 
 <style scoped>

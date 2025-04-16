@@ -67,7 +67,7 @@
         <a-card title="我的健康概况" :loading="loading">
           <a-statistic 
             title="健康记录" 
-            :value="userStatistics.records_count" 
+            :value="userStatistics.records_count || 0" 
             style="margin-bottom: 20px"
           >
             <template #prefix>
@@ -77,7 +77,7 @@
           
           <a-statistic 
             title="处方记录" 
-            :value="userStatistics.prescriptions_count"
+            :value="userStatistics.prescriptions_count || 0"
           >
             <template #prefix>
               <medicine-box-outlined />
@@ -116,8 +116,12 @@ const loading = ref(false);
 const submitting = ref(false);
 const userData = ref<any>(null);
 
+// 使用计算属性获取统计信息
 const userStatistics = computed(() => {
-  return userData.value?.statistics || {
+  if (userData.value?.stats) {
+    return userData.value.stats;
+  }
+  return {
     records_count: 0,
     prescriptions_count: 0
   };
@@ -144,22 +148,46 @@ const fetchPatientInfo = async () => {
   loading.value = true;
   try {
     const response = await getCurrentUser();
+    console.log('API响应:', response);
+    
     if (response.success && response.data) {
       userData.value = response.data;
       
       // 更新表单数据
       if (userData.value.patient_info) {
-        Object.assign(patientForm, userData.value.patient_info);
+        // 使用解构赋值确保所有字段都被处理
+        const {
+          id,
+          gender,
+          date_of_birth,
+          address,
+          emergency_contact,
+          emergency_phone,
+          medical_history,
+          allergies
+        } = userData.value.patient_info;
+        
+        // 更新表单
+        patientForm.gender = gender || '';
+        patientForm.address = address || '';
+        patientForm.emergency_contact = emergency_contact || '';
+        patientForm.emergency_phone = emergency_phone || '';
+        patientForm.medical_history = medical_history || '';
+        patientForm.allergies = allergies || '';
         
         // 处理日期格式
-        if (patientForm.date_of_birth) {
-          patientForm.date_of_birth = dayjs(patientForm.date_of_birth);
+        if (date_of_birth) {
+          patientForm.date_of_birth = dayjs(date_of_birth);
+        } else {
+          patientForm.date_of_birth = undefined;
         }
       }
+    } else {
+      message.error(response.message || '获取患者信息失败');
     }
-  } catch (error) {
-    console.error('获取患者信息失败', error);
-    message.error('获取患者信息失败');
+  } catch (error: any) {
+    console.error('获取患者信息失败:', error);
+    message.error(error.message || '获取患者信息失败');
   } finally {
     loading.value = false;
   }
@@ -169,14 +197,18 @@ const fetchPatientInfo = async () => {
 const handleUpdate = async () => {
   submitting.value = true;
   try {
-    // 处理日期数据
+    // 创建一个新对象以避免修改原始表单
     const formData: Partial<PatientInfo> = { ...patientForm };
-    if (formData.date_of_birth) {
-      formData.date_of_birth = (formData.date_of_birth as dayjs.Dayjs).format('YYYY-MM-DD');
+    
+    // 处理日期数据
+    if (formData.date_of_birth && dayjs.isDayjs(formData.date_of_birth)) {
+      formData.date_of_birth = formData.date_of_birth.format('YYYY-MM-DD');
     }
     
     // 确保user_id存在
     formData.user_id = props.userId;
+    
+    console.log('提交的数据:', formData);
     
     // 通过API更新患者信息
     const response = await updateUser({ 
@@ -191,6 +223,7 @@ const handleUpdate = async () => {
       message.error(response.message || '更新失败');
     }
   } catch (error: any) {
+    console.error('更新请求失败:', error);
     message.error(error.message || '更新请求失败');
   } finally {
     submitting.value = false;

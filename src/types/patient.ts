@@ -46,6 +46,7 @@ export interface Doctor {
   interaction?: {
     record_count: number;
     has_interaction: boolean;
+    has_prescription?: boolean;
   };
 }
 

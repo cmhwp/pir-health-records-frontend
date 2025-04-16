@@ -40,6 +40,7 @@ export const getDoctors = (
     specialty?: string;
     sort_by?: 'name' | 'experience' | 'created_at';
     sort_order?: 'asc' | 'desc';
+    include_prescription_history?: boolean;
   } = {}
 ): Promise<ApiResponse<DoctorsResponse>> => {
   return request.get('/patient/doctors', { params });
