@@ -167,4 +167,37 @@ export const aggregateHealthStats = async (
  */
 export const getProjectStatistics = async (): Promise<ApiResponse<ProjectStatisticsResponse>> => {
   return request.get(`${API_PATH}/statistics/projects`);
+};
+
+/**
+ * 获取PIR查询匹配的记录详情
+ */
+export const getPIRRecordDetail = async (
+  recordId: string
+): Promise<ApiResponse<any>> => {
+  return request.get(`${API_PATH}/pir/record/${recordId}`);
+};
+
+/**
+ * 解密PIR查询结果
+ */
+export const decryptPIRResult = async (
+  encryptedResult: string,
+  recordId?: string,
+  decryptKey?: string
+): Promise<ApiResponse<any>> => {
+  return request.post(`${API_PATH}/pir/decrypt`, {
+    encrypted_result: encryptedResult,
+    record_id: recordId,
+    decrypt_key: decryptKey
+  });
+};
+
+/**
+ * 获取PIR记录解密密钥
+ */
+export const getPIRDecryptKey = async (
+  recordId: string
+): Promise<ApiResponse<any>> => {
+  return request.get(`${API_PATH}/pir/decrypt-key/${recordId}`);
 }; 

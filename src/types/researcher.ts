@@ -168,6 +168,8 @@ export interface BatchPIRQueryResponse {
   results: Array<{
     encrypted_result: string;
     protocol: string;
+    matched_record_id?: string;
+    error?: string;
     metadata: {
       timestamp: string;
       query_id: number;
@@ -304,3 +306,4 @@ export interface ProjectStatisticsResponse {
     count: number;
   }>;
 } 
+
