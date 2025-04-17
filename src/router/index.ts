@@ -178,6 +178,60 @@ const routes: Array<RouteRecordRaw> = [
     meta: { requiresAuth: true, role: 'researcher' },
     children: [
       {
+        path: '',
+        name: 'ResearcherHome',
+        component: () => import('@/components/researcher/DashboardContent.vue'),
+        meta: { requiresAuth: true, role: 'researcher', title: '工作台' }
+      },
+      {
+        path: 'projects',
+        name: 'ResearcherProjects',
+        component: () => import('@/components/researcher/ProjectsContent.vue'),
+        meta: { requiresAuth: true, role: 'researcher', title: '研究项目' }
+      },
+      {
+        path:'project/:id',
+        name:'ProjectDetails',
+        component:()=>import('@/components/researcher/ProjectDetails.vue'),
+        meta:{requiresAuth:true,role:'researcher',title:'项目详情'}
+      },
+      {
+        path:'records',
+        name:'ResearcherRecords',
+        component:()=>import('@/components/researcher/RecordsContent.vue'),
+        meta:{requiresAuth:true,role:'researcher',title:'健康记录'}
+      },
+      {
+        path:'record/:id',
+        name:'RecordDetails',
+        component:()=>import('@/components/researcher/RecordDetailContent.vue'),
+        meta:{requiresAuth:true,role:'researcher',title:'记录详情'}
+      },  
+      {
+        path: 'analytics',
+        name: 'ResearcherAnalytics',
+        component: () => import('@/components/researcher/AnalyticsContent.vue'),
+        meta: { requiresAuth: true, role: 'researcher', title: '数据分析' }
+      },
+      {
+        path: 'pir',
+        name: 'ResearcherPIR',
+        component: () => import('@/components/researcher/PirQueryContent.vue'),
+        meta: { requiresAuth: true, role: 'researcher', title: '隐私查询' }
+      },
+      {
+        path: 'teams',
+        name: 'ResearcherTeams',
+        component: () => import('@/components/researcher/TeamsContent.vue'),
+        meta: { requiresAuth: true, role: 'researcher', title: '研究团队' }
+      },
+      {
+        path: 'teams/:id',
+        name: 'TeamDetails',
+        component: () => import('@/components/researcher/TeamDetails.vue'),
+        meta: { requiresAuth: true, role: 'researcher', title: '团队详情' }
+      },
+      {
         path: 'profile',
         name: 'ResearcherProfile',
         component: () => import('@/views/auth/Profile.vue'),

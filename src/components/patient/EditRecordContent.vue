@@ -293,7 +293,6 @@ import {
   updateHealthRecord,
   createRecordVersion,
   getRecordFileUrl,
-  getInstitutions
 } from '@/api/health';
 import {
   RecordVisibility,
@@ -302,7 +301,7 @@ import {
   type InstitutionInfo
 } from '@/types/health';
 import { useRecordTypes } from '@/hooks/useRecordTypes';
-
+import { getInstitutions } from '@/api/patient';
 const route = useRoute();
 const router = useRouter();
 const formRef = ref<FormInstance>();
@@ -315,6 +314,7 @@ const { getRecordTypeName } = useRecordTypes();
 const loading = ref(true);
 const record = ref<HealthRecord | null>(null);
 const saving = ref(false);
+const sqlId = ref<number | null>(null);
 
 // 表单状态
 const formState = reactive({
@@ -421,7 +421,15 @@ const fetchRecordDetail = async () => {
       originalVisibility.value = record.value.visibility;
       
       if (record.value.medication) {
-        formState.medication = { ...record.value.medication };
+        formState.medication = { 
+          medication_name: record.value.medication.medication_name || '',
+          dosage: record.value.medication.dosage || '',
+          frequency: record.value.medication.frequency || '',
+          start_date: record.value.medication.start_date || '',
+          end_date: record.value.medication.end_date || '',
+          instructions: record.value.medication.instructions || '',
+          side_effects: record.value.medication.side_effects || ''
+        };
       }
       
       // 转换标签为数组

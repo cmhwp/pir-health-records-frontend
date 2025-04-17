@@ -1,156 +1,155 @@
 <template>
   <div>
-    <h1>数据分析</h1>
-    
-    <a-row :gutter="16" style="margin-bottom: 16px">
+    <a-row :gutter="16">
       <a-col :span="24">
-        <a-card>
-          <a-form layout="inline">
-            <a-form-item label="数据源">
-              <a-select v-model:value="dataSource" style="width: 180px">
-                <a-select-option value="patient_records">患者记录</a-select-option>
-                <a-select-option value="treatment_data">治疗数据</a-select-option>
-                <a-select-option value="clinical_trials">临床试验</a-select-option>
-                <a-select-option value="genomic_data">基因组数据</a-select-option>
-              </a-select>
-            </a-form-item>
-            <a-form-item label="时间范围">
-              <a-range-picker v-model:value="dateRange" />
-            </a-form-item>
-            <a-form-item>
-              <a-button type="primary" @click="runAnalysis">
-                <template #icon><play-circle-outlined /></template>
-                运行分析
-              </a-button>
-            </a-form-item>
+        <a-card :bordered="false" title="健康数据分析">
+          <template #extra>
+            <a-button type="primary" @click="executeAnalysis">
+              <template #icon><pie-chart-outlined /></template>
+              执行分析
+            </a-button>
+          </template>
+
+          <!-- 分析参数选择 -->
+          <a-form layout="vertical">
+            <a-row :gutter="16">
+              <a-col :span="6">
+                <a-form-item label="分析维度">
+                  <a-select
+                    v-model:value="analysisParams.dimension"
+                    placeholder="请选择分析维度"
+                  >
+                    <a-select-option value="disease">疾病分布</a-select-option>
+                    <a-select-option value="age_group">年龄分布</a-select-option>
+                    <a-select-option value="gender">性别分布</a-select-option>
+                    <a-select-option value="region">地区分布</a-select-option>
+                    <a-select-option value="medication">药物分布</a-select-option>
+                  </a-select>
+                </a-form-item>
+              </a-col>
+              <a-col :span="6">
+                <a-form-item label="次要维度">
+                  <a-select
+                    v-model:value="analysisParams.sub_dimension"
+                    placeholder="请选择次要维度"
+                    allowClear
+                  >
+                    <a-select-option value="disease" v-if="analysisParams.dimension !== 'disease'">疾病分布</a-select-option>
+                    <a-select-option value="age_group" v-if="analysisParams.dimension !== 'age_group'">年龄分布</a-select-option>
+                    <a-select-option value="gender" v-if="analysisParams.dimension !== 'gender'">性别分布</a-select-option>
+                    <a-select-option value="record_type">记录类型</a-select-option>
+                    <a-select-option value="time_period">时间分布</a-select-option>
+                    <a-select-option value="doctor_department">医生科室</a-select-option>
+                  </a-select>
+                </a-form-item>
+              </a-col>
+              <a-col :span="6">
+                <a-form-item label="记录类型">
+                  <a-select
+                    v-model:value="recordType"
+                    placeholder="选择记录类型"
+                    allowClear
+                  >
+                    <a-select-option value="medical_record">病历记录</a-select-option>
+                    <a-select-option value="lab_result">检验结果</a-select-option>
+                    <a-select-option value="prescription">处方记录</a-select-option>
+                    <a-select-option value="imaging">影像资料</a-select-option>
+                    <a-select-option value="vaccination">疫苗接种</a-select-option>
+                    <a-select-option value="surgery">手术记录</a-select-option>
+                    <a-select-option value="allergy">过敏记录</a-select-option>
+                    <a-select-option value="visit">就诊记录</a-select-option>
+                  </a-select>
+                </a-form-item>
+              </a-col>
+              <a-col :span="6">
+                <a-form-item label="日期范围">
+                  <a-range-picker 
+                    v-model:value="dateRange" 
+                    style="width: 100%" 
+                    :placeholder="['开始日期', '结束日期']" 
+                    @change="onDateChange"
+                  />
+                </a-form-item>
+              </a-col>
+            </a-row>
+            <a-row :gutter="16">
+              <a-col :span="6">
+                <a-form-item label="指标">
+                  <a-select
+                    v-model:value="analysisParams.metric"
+                    placeholder="请选择指标"
+                    allowClear
+                  >
+                    <a-select-option value="count">数量统计</a-select-option>
+                    <a-select-option value="avg">平均值</a-select-option>
+                    <a-select-option value="sum">总和</a-select-option>
+                    <a-select-option value="min">最小值</a-select-option>
+                    <a-select-option value="max">最大值</a-select-option>
+                  </a-select>
+                </a-form-item>
+              </a-col>
+              <a-col :span="6">
+                <a-form-item label="最小计数">
+                  <a-input-number 
+                    v-model:value="analysisParams.min_count" 
+                    placeholder="最小计数" 
+                    style="width: 100%" 
+                    :min="0" 
+                  />
+                </a-form-item>
+              </a-col>
+            </a-row>
           </a-form>
         </a-card>
       </a-col>
     </a-row>
-    
-    <a-row :gutter="16">
-      <a-col :span="16">
-        <a-card title="数据分析结果" :bordered="false" style="margin-bottom: 16px">
+
+    <!-- 分析结果 -->
+    <a-row :gutter="16" style="margin-top: 16px">
+      <a-col :span="24">
+        <a-card :bordered="false" :loading="loading">
           <a-tabs v-model:activeKey="activeTabKey">
-            <a-tab-pane key="charts" tab="图表">
-              <div style="display: flex; flex-direction: column; gap: 16px;">
-                <div style="height: 400px; border: 1px solid #f0f0f0; display: flex; justify-content: center; align-items: center;">
-                  <h3>年龄分布与疾病关联性分析</h3>
-                  <!-- 实际项目中这里放置图表组件 -->
-                  <div style="width: 80%; height: 80%; background-color: #f9f9f9; display: flex; justify-content: center; align-items: center;">
-                    图表展示区域（示例）
-                  </div>
-                </div>
-                
-                <div style="height: 400px; border: 1px solid #f0f0f0; display: flex; justify-content: center; align-items: center;">
-                  <h3>治疗效果对比分析</h3>
-                  <!-- 实际项目中这里放置图表组件 -->
-                  <div style="width: 80%; height: 80%; background-color: #f9f9f9; display: flex; justify-content: center; align-items: center;">
-                    图表展示区域（示例）
-                  </div>
+            <a-tab-pane key="chart" tab="图表视图">
+              <a-empty v-if="!hasAnalysisData" description="暂无分析数据，请执行分析" />
+              <div v-else class="chart-container" ref="chartContainer"></div>
+            </a-tab-pane>
+            <a-tab-pane key="table" tab="表格视图">
+              <a-empty v-if="!hasAnalysisData" description="暂无分析数据，请执行分析" />
+              <div v-else>
+                <a-table
+                  :columns="analysisColumns"
+                  :data-source="analysisTableData"
+                  :pagination="{ pageSize: 10 }"
+                  :scroll="{ x: 800 }"
+                >
+                  <template #bodyCell="{ column, record }">
+                    <template v-if="column.dataIndex === 'dimension'">
+                      <a-tag>{{ record.dimension }}</a-tag>
+                    </template>
+                    <template v-if="column.dataIndex === 'percentage'">
+                      <a-progress 
+                        :percent="record.percentage" 
+                        size="small" 
+                        :status="record.percentage > 50 ? 'success' : 'normal'" 
+                      />
+                    </template>
+                  </template>
+                </a-table>
+              </div>
+            </a-tab-pane>
+            <a-tab-pane key="raw" tab="原始数据">
+              <a-empty v-if="!hasAnalysisData" description="暂无分析数据，请执行分析" />
+              <div v-else>
+                <pre class="json-data">{{ JSON.stringify(analysisData, null, 2) }}</pre>
+                <div style="margin-top: 16px; text-align: right">
+                  <a-button type="primary" @click="downloadAnalysisData">
+                    <template #icon><download-outlined /></template>
+                    导出数据
+                  </a-button>
                 </div>
               </div>
             </a-tab-pane>
-            <a-tab-pane key="table" tab="数据表">
-              <a-table :columns="tableColumns" :data-source="tableData" :pagination="{ pageSize: 5 }">
-                <template #bodyCell="{ column, record }">
-                  <template v-if="column.key === 'trend'">
-                    <a-tag :color="record.trend === '上升' ? 'red' : 'green'">
-                      {{ record.trend }}
-                    </a-tag>
-                  </template>
-                </template>
-              </a-table>
-            </a-tab-pane>
-            <a-tab-pane key="report" tab="分析报告">
-              <a-typography>
-                <a-typography-title level={4}>数据分析总结</a-typography-title>
-                <a-typography-paragraph>
-                  基于当前所选数据源的分析结果显示，在过去6个月内，心血管疾病的发病率呈现下降趋势，而糖尿病的发病率有小幅上升。
-                </a-typography-paragraph>
-                <a-typography-paragraph>
-                  年龄分布方面，45-60岁的患者群体占比最高，达到总体的42%。与上一年同期相比，青少年（18岁以下）患者数量减少了5%。
-                </a-typography-paragraph>
-                <a-typography-title level={4}>关键发现</a-typography-title>
-                <a-typography-paragraph>
-                  <ul>
-                    <li>新型治疗方案A对心血管疾病的有效率比传统方案高出15%。</li>
-                    <li>男性患者在遵循治疗方案方面的依从性普遍低于女性患者。</li>
-                    <li>患者生活习惯与疾病发展速度呈现明显相关性。</li>
-                  </ul>
-                </a-typography-paragraph>
-                <a-typography-title level={4}>建议措施</a-typography-title>
-                <a-typography-paragraph>
-                  <ol>
-                    <li>扩大新型治疗方案A的应用范围。</li>
-                    <li>针对男性患者群体，设计更有效的治疗依从性提升计划。</li>
-                    <li>加强健康生活方式的宣传和教育。</li>
-                  </ol>
-                </a-typography-paragraph>
-              </a-typography>
-            </a-tab-pane>
           </a-tabs>
-        </a-card>
-      </a-col>
-      <a-col :span="8">
-        <a-card title="分析任务" :bordered="false" style="margin-bottom: 16px">
-          <a-list
-            size="small"
-            :data-source="analysisTasks"
-            :render-item-prop="'renderItem'"
-          >
-            <template #renderItem="{ item }">
-              <a-list-item>
-                <a-list-item-meta
-                  :title="item.name"
-                  :description="`上次运行: ${item.lastRun}`"
-                >
-                  <template #avatar>
-                    <a-avatar 
-                      :style="{ backgroundColor: getStatusColor(item.status) }" 
-                      shape="square"
-                    >
-                      {{ item.status.charAt(0) }}
-                    </a-avatar>
-                  </template>
-                </a-list-item-meta>
-                <template #extra>
-                  <a-button size="small" @click="runTask(item.id)">
-                    <template #icon><play-circle-outlined /></template>
-                    运行
-                  </a-button>
-                </template>
-              </a-list-item>
-            </template>
-          </a-list>
-        </a-card>
-        
-        <a-card title="分析工具" :bordered="false">
-          <a-list
-            size="small"
-            :data-source="analysisTools"
-            :render-item-prop="'renderItem'"
-          >
-            <template #renderItem="{ item }">
-              <a-list-item>
-                <a-list-item-meta
-                  :title="item.name"
-                  :description="item.description"
-                >
-                  <template #avatar>
-                    <a-avatar :style="{ backgroundColor: item.color }" shape="square">
-                      {{ item.icon }}
-                    </a-avatar>
-                  </template>
-                </a-list-item-meta>
-                <template #extra>
-                  <a-button size="small" @click="useTool(item.id)">
-                    使用
-                  </a-button>
-                </template>
-              </a-list-item>
-            </template>
-          </a-list>
         </a-card>
       </a-col>
     </a-row>
@@ -158,182 +157,464 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue';
-import { PlayCircleOutlined } from '@ant-design/icons-vue';
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
+import { message } from 'ant-design-vue';
+import dayjs from 'dayjs';
+import { 
+  PieChartOutlined,
+  DownloadOutlined
+} from '@ant-design/icons-vue';
+import { aggregateHealthStats } from '@/api/researcher';
+import type {
+  AggregateHealthStatsRequest,
+  AggregateHealthStatsResponse,
+  DiseaseAggregateResponse,
+  AgeGroupAggregateResponse,
+  GenderAggregateResponse,
+  RegionAggregateResponse,
+  MedicationAggregateResponse,
+} from '@/types/researcher';
+import * as echarts from 'echarts/core';
+import {
+  PieChart,
+  type PieSeriesOption,
+  BarChart,
+  type BarSeriesOption
+} from 'echarts/charts';
+import {
+  GridComponent,
+  type GridComponentOption,
+  TooltipComponent,
+  type TooltipComponentOption,
+  LegendComponent,
+  type LegendComponentOption,
+  TitleComponent,
+  type TitleComponentOption
+} from 'echarts/components';
+import { LabelLayout } from 'echarts/features';
+import { CanvasRenderer } from 'echarts/renderers';
 
-// 数据源选择
-const dataSource = ref('patient_records');
+// 注册必须的组件
+echarts.use([
+  PieChart,
+  BarChart,
+  GridComponent,
+  TooltipComponent,
+  LegendComponent,
+  TitleComponent,
+  LabelLayout,
+  CanvasRenderer
+]);
 
-// 日期范围
-const dateRange = ref<[Date, Date] | null>(null);
+// 定义类型
+type ECOption = echarts.ComposeOption<
+  PieSeriesOption | 
+  BarSeriesOption | 
+  GridComponentOption | 
+  TooltipComponentOption | 
+  LegendComponentOption |
+  TitleComponentOption
+>;
 
-// 当前激活的选项卡
-const activeTabKey = ref('charts');
+const loading = ref<boolean>(false);
+const chartContainer = ref<HTMLElement | null>(null);
+let chart: echarts.ECharts | null = null;
+const activeTabKey = ref<string>('chart');
+const dateRange = ref<any[]>([]);
+
+// 分析参数
+const analysisParams = reactive<AggregateHealthStatsRequest>({
+  dimension: 'disease',
+  sub_dimension: undefined,
+  metric: undefined,
+  min_count: 5,
+  filters: {
+    record_type: undefined,
+    date_range: {
+      start: undefined,
+      end: undefined
+    }
+  }
+});
+
+// 分析结果数据
+const analysisData = ref<AggregateHealthStatsResponse | null>(null);
+
+// 是否有分析数据
+const hasAnalysisData = computed(() => {
+  return analysisData.value && 
+        analysisData.value?.dimension && 
+        Array.isArray(analysisData.value?.data) && 
+        analysisData.value.data.length > 0;
+});
 
 // 表格列定义
-const tableColumns = [
-  {
-    title: '疾病类型',
-    dataIndex: 'disease',
-    key: 'disease',
-  },
-  {
-    title: '患者数量',
-    dataIndex: 'patientCount',
-    key: 'patientCount',
-  },
-  {
-    title: '平均年龄',
-    dataIndex: 'avgAge',
-    key: 'avgAge',
-  },
-  {
-    title: '男女比例',
-    dataIndex: 'genderRatio',
-    key: 'genderRatio',
-  },
-  {
-    title: '趋势',
-    dataIndex: 'trend',
-    key: 'trend',
-  },
-];
+const analysisColumns = computed(() => {
+  const dimension = analysisData.value?.dimension;
+  
+  if (!dimension) return [];
+  
+  const dimensionColumnName = getDimensionDisplayName(dimension);
+  
+  return [
+    {
+      title: dimensionColumnName,
+      dataIndex: 'dimension',
+      key: 'dimension',
+      width: 200
+    },
+    {
+      title: '数量',
+      dataIndex: 'count',
+      key: 'count',
+      width: 100,
+      sorter: (a: any, b: any) => a.count - b.count
+    },
+    {
+      title: '百分比',
+      dataIndex: 'percentage',
+      key: 'percentage',
+      width: 200
+    },
+    ...(analysisData.value?.dimension === 'disease' ? [
+      {
+        title: '平均值',
+        dataIndex: 'mean',
+        key: 'mean',
+        width: 100
+      },
+      {
+        title: '标准差',
+        dataIndex: 'std',
+        key: 'std',
+        width: 100
+      }
+    ] : [])
+  ];
+});
 
 // 表格数据
-const tableData = [
-  {
-    key: '1',
-    disease: '高血压',
-    patientCount: 1243,
-    avgAge: 58,
-    genderRatio: '1.2:1 (男:女)',
-    trend: '下降',
-  },
-  {
-    key: '2',
-    disease: '糖尿病',
-    patientCount: 892,
-    avgAge: 52,
-    genderRatio: '1:1.1 (男:女)',
-    trend: '上升',
-  },
-  {
-    key: '3',
-    disease: '冠心病',
-    patientCount: 567,
-    avgAge: 63,
-    genderRatio: '1.5:1 (男:女)',
-    trend: '下降',
-  },
-  {
-    key: '4',
-    disease: '肺炎',
-    patientCount: 723,
-    avgAge: 45,
-    genderRatio: '1:1 (男:女)',
-    trend: '下降',
-  },
-  {
-    key: '5',
-    disease: '抑郁症',
-    patientCount: 421,
-    avgAge: 38,
-    genderRatio: '1:1.8 (男:女)',
-    trend: '上升',
-  },
-];
-
-// 分析任务列表
-const analysisTasks = [
-  {
-    id: 1,
-    name: '年龄分布分析',
-    status: '完成',
-    lastRun: '2023-05-10',
-  },
-  {
-    id: 2,
-    name: '治疗效果对比',
-    status: '进行中',
-    lastRun: '2023-05-15',
-  },
-  {
-    id: 3,
-    name: '地区疾病分布',
-    status: '待处理',
-    lastRun: '2023-04-28',
-  },
-  {
-    id: 4,
-    name: '疾病关联性分析',
-    status: '完成',
-    lastRun: '2023-05-12',
-  },
-];
-
-// 分析工具列表
-const analysisTools = [
-  {
-    id: 1,
-    name: '统计分析工具',
-    description: '基础统计分析',
-    icon: 'S',
-    color: '#1890ff',
-  },
-  {
-    id: 2,
-    name: '机器学习分析',
-    description: '预测模型与分类',
-    icon: 'M',
-    color: '#52c41a',
-  },
-  {
-    id: 3,
-    name: '可视化生成器',
-    description: '数据可视化工具',
-    icon: 'V',
-    color: '#722ed1',
-  },
-  {
-    id: 4,
-    name: '报告生成器',
-    description: '自动生成分析报告',
-    icon: 'R',
-    color: '#fa8c16',
-  },
-];
-
-// 根据状态获取颜色
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case '完成':
-      return '#52c41a'; // 绿色
-    case '进行中':
-      return '#1890ff'; // 蓝色
-    case '待处理':
-      return '#faad14'; // 橙色
-    case '失败':
-      return '#f5222d'; // 红色
+const analysisTableData = computed(() => {
+  if (!analysisData.value || !analysisData.value.data) return [];
+  
+  const dimension = analysisData.value?.dimension;
+  const totalRecords = 'total_records' in analysisData.value ? analysisData.value.total_records : 0;
+  
+  // 根据维度处理数据
+  switch (dimension) {
+    case 'disease':
+      return (analysisData.value as DiseaseAggregateResponse).data.map(item => ({
+        key: item.disease,
+        dimension: item.disease,
+        count: item.count,
+        percentage: calculatePercentage(item.count, totalRecords),
+        mean: item.mean || '-',
+        std: item.std || '-',
+        sub_groups: item.sub_groups || []
+      }));
+    
+    case 'age_group':
+      return (analysisData.value as AgeGroupAggregateResponse).data.map(item => ({
+        key: item.age_group,
+        dimension: item.age_group,
+        count: item.count,
+        percentage: calculatePercentage(item.count, totalRecords),
+        sub_groups: item.sub_groups || []
+      }));
+    
+    case 'gender':
+      return (analysisData.value as GenderAggregateResponse).data.map(item => ({
+        key: item.gender,
+        dimension: item.gender,
+        count: item.count,
+        percentage: calculatePercentage(item.count, totalRecords),
+        sub_groups: item.sub_groups || []
+      }));
+    
+    case 'region':
+      return (analysisData.value as RegionAggregateResponse).data.map(item => ({
+        key: item.region,
+        dimension: item.region,
+        count: item.count,
+        percentage: calculatePercentage(item.count, totalRecords),
+        sub_groups: item.sub_groups || []
+      }));
+    
+    case 'medication':
+      return (analysisData.value as MedicationAggregateResponse).data.map(item => ({
+        key: item.medication,
+        dimension: item.medication,
+        count: item.count,
+        percentage: calculatePercentage(item.count, totalRecords),
+        sub_groups: item.sub_groups || []
+      }));
+    
     default:
-      return '#d9d9d9'; // 灰色
+      return [];
+  }
+});
+
+// 处理日期范围变更
+const onDateChange = (dates: any, dateStrings: string[]) => {
+  if (!analysisParams.filters) {
+    analysisParams.filters = {};
+  }
+  analysisParams.filters.date_range = {
+    start: dateStrings[0] || undefined,
+    end: dateStrings[1] || undefined
+  };
+};
+
+// 执行分析
+const executeAnalysis = async () => {
+  loading.value = true;
+  
+  try {
+    const response = await aggregateHealthStats(analysisParams);
+    
+    if (response.success && response.data) {
+      analysisData.value = response.data;
+      renderChart();
+    } else {
+      message.error('分析数据失败');
+    }
+  } catch (error) {
+    console.error('分析数据失败:', error);
+    message.error('分析数据失败');
+  } finally {
+    loading.value = false;
   }
 };
 
-// 运行分析方法
-const runAnalysis = () => {
-  console.log('运行分析，数据源:', dataSource.value, '日期范围:', dateRange.value);
+// 计算百分比
+const calculatePercentage = (value: number, total: number) => {
+  if (total === 0) return 0;
+  return Math.round((value / total) * 100);
 };
 
-// 运行特定任务
-const runTask = (taskId: number) => {
-  console.log('运行任务ID:', taskId);
+// 获取维度显示名称
+const getDimensionDisplayName = (dimension: string) => {
+  const dimensionMap: Record<string, string> = {
+    disease: '疾病',
+    age_group: '年龄组',
+    gender: '性别',
+    region: '地区',
+    medication: '药物'
+  };
+  
+  return dimensionMap[dimension] || dimension;
 };
 
-// 使用分析工具
-const useTool = (toolId: number) => {
-  console.log('使用工具ID:', toolId);
+// 渲染图表
+const renderChart = () => {
+  if (!chartContainer.value || !hasAnalysisData.value) return;
+  
+  if (!chart) {
+    chart = echarts.init(chartContainer.value);
+  }
+  
+  const dimension = analysisData.value?.dimension;
+  const dimensionDisplayName = getDimensionDisplayName(dimension || '');
+  
+  // 准备图表数据
+  let chartData: any[] = [];
+  if (analysisData.value && analysisData.value.data) {
+    switch (dimension) {
+      case 'disease':
+        chartData = (analysisData.value as DiseaseAggregateResponse).data.map(item => ({
+          name: item.disease,
+          value: item.count
+        }));
+        break;
+      case 'age_group':
+        chartData = (analysisData.value as AgeGroupAggregateResponse).data.map(item => ({
+          name: item.age_group,
+          value: item.count
+        }));
+        break;
+      case 'gender':
+        chartData = (analysisData.value as GenderAggregateResponse).data.map(item => ({
+          name: item.gender,
+          value: item.count
+        }));
+        break;
+      case 'region':
+        chartData = (analysisData.value as RegionAggregateResponse).data.map(item => ({
+          name: item.region,
+          value: item.count
+        }));
+        break;
+      case 'medication':
+        chartData = (analysisData.value as MedicationAggregateResponse).data.map(item => ({
+          name: item.medication,
+          value: item.count
+        }));
+        break;
+    }
+  }
+  
+  // 如果数据不多，使用饼图，否则使用柱状图
+  const usePieChart = chartData.length <= 10;
+  
+  const option: ECOption = usePieChart
+    ? {
+        title: {
+          text: `${dimensionDisplayName}分布`,
+          left: 'center'
+        },
+        tooltip: {
+          trigger: 'item',
+          formatter: '{a} <br/>{b}: {c} ({d}%)'
+        },
+        legend: {
+          orient: 'vertical',
+          left: 'left',
+          type: 'scroll'
+        },
+        series: [
+          {
+            name: dimensionDisplayName,
+            type: 'pie',
+            radius: ['40%', '70%'],
+            avoidLabelOverlap: true,
+            itemStyle: {
+              borderRadius: 10,
+              borderColor: '#fff',
+              borderWidth: 2
+            },
+            label: {
+              show: false,
+              position: 'center'
+            },
+            emphasis: {
+              label: {
+                show: true,
+                fontSize: '16',
+                fontWeight: 'bold'
+              }
+            },
+            labelLine: {
+              show: false
+            },
+            data: chartData
+          }
+        ]
+      }
+    : {
+        title: {
+          text: `${dimensionDisplayName}分布`,
+          left: 'center'
+        },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: {
+            type: 'shadow'
+          }
+        },
+        grid: {
+          left: '3%',
+          right: '4%',
+          bottom: '3%',
+          containLabel: true
+        },
+        xAxis: {
+          type: 'category',
+          data: chartData.map(item => item.name),
+          axisLabel: {
+            rotate: 45
+          }
+        },
+        yAxis: {
+          type: 'value'
+        },
+        series: [
+          {
+            name: dimensionDisplayName,
+            type: 'bar',
+            data: chartData.map(item => item.value)
+          }
+        ]
+      };
+  
+  chart.setOption(option);
 };
+
+// 监听窗口大小变化
+const handleResize = () => {
+  if (chart) {
+    chart.resize();
+  }
+};
+
+// 下载分析数据
+const downloadAnalysisData = () => {
+  if (!analysisData.value) return;
+  
+  const dataStr = JSON.stringify(analysisData.value, null, 2);
+  const blob = new Blob([dataStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `health_analysis_${analysisData.value?.dimension || 'data'}_${dayjs().format('YYYYMMDD_HHmmss')}.json`;
+  document.body.appendChild(a);
+  a.click();
+  
+  URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+  
+  message.success('数据导出成功');
+};
+
+// 使用计算属性处理record_type
+const recordType = computed({
+  get: () => {
+    return analysisParams.filters?.record_type;
+  },
+  set: (value) => {
+    if (!analysisParams.filters) {
+      analysisParams.filters = {};
+    }
+    analysisParams.filters.record_type = value;
+  }
+});
+
+onMounted(() => {
+  if (!analysisParams.filters) {
+    analysisParams.filters = {
+      record_type: undefined,
+      date_range: {
+        start: undefined,
+        end: undefined
+      }
+    };
+  }
+  
+  window.addEventListener('resize', handleResize);
+});
+
+onBeforeUnmount(() => {
+  if (chart) {
+    chart.dispose();
+    chart = null;
+  }
+  window.removeEventListener('resize', handleResize);
+});
 </script>
 
 <style scoped>
+.chart-container {
+  height: 400px;
+  width: 100%;
+}
+
+.json-data {
+  background-color: #f5f5f5;
+  padding: 16px;
+  border-radius: 4px;
+  max-height: 400px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
 </style> 
