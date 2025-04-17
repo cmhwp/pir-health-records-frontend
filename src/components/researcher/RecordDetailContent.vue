@@ -125,10 +125,15 @@
         </a-card>
 
         <!-- 标签信息 -->
-        <a-card v-if="record.tags && record.tags.length > 0" title="标签" class="tags-card" :bordered="false">
-          <a-space wrap>
-            <a-tag v-for="tag in record.tags" :key="tag" color="blue">{{ tag }}</a-tag>
-          </a-space>
+        <a-card v-if="record.tags" title="标签" class="tags-card" :bordered="false">
+          <div class="tags-container">
+            <template v-if="Array.isArray(record.tags)">
+              <a-tag v-for="tag in record.tags" :key="tag" color="blue" class="tag-item">{{ tag }}</a-tag>
+            </template>
+            <template v-else>
+              <a-tag color="blue" class="tag-item">{{ record.tags }}</a-tag>
+            </template>
+          </div>
         </a-card>
       </div>
 
@@ -172,6 +177,7 @@ const fetchRecordDetails = async () => {
   loading.value = true;
   try {
     const response = await getRecordDetails(recordId);
+    console.log(response);
     if (response.success && response.data) {
       record.value = response.data;
     } else {
@@ -197,8 +203,22 @@ const formatDate = (dateString: string) => {
 
 // 获取记录类型标签
 const getRecordTypeLabel = (type: string): string => {
+  // 检查是否是内置记录类型
   const recordType = recordTypeOptions.value.find(t => t.value === type);
-  return recordType ? recordType.label : type;
+  if (recordType) {
+    return recordType.label;
+  }
+  
+  // 转换内部枚举类型为可读格式
+  if (type) {
+    // 将下划线格式转换为空格分隔的首字母大写格式
+    return type.toLowerCase()
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+  
+  return type || '未知类型';
 };
 
 // 判断是否为图片文件
@@ -281,5 +301,15 @@ onMounted(() => {
   background-color: #f0f0f0;
   font-size: 48px;
   color: #1890ff;
+}
+
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.tag-item {
+  margin-right: 8px;
+  margin-bottom: 8px;
 }
 </style> 

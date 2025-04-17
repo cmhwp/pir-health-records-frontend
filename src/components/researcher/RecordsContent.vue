@@ -196,16 +196,16 @@ const columns = [
     width: 120
   },
   {
-    title: '记录日期',
-    dataIndex: 'record_date',
-    key: 'record_date',
+    title: '创建日期',
+    dataIndex: 'created_at',
+    key: 'created_at',
     width: 120,
     sorter: true,
     render: (_: any, record: ResearcherAccessibleRecord) => 
-      record.record_date ? dayjs(record.record_date).format('YYYY-MM-DD') : '未知'
+      record.created_at ? dayjs(record.created_at).format('YYYY-MM-DD') : '未知'
   },
   {
-    title: '创建时间',
+    title: '更新日期',
     dataIndex: 'created_at',
     key: 'created_at',
     width: 120,
@@ -243,6 +243,7 @@ const fetchRecords = async () => {
     };
     
     const response = await getAccessibleRecords(params);
+    console.log(response);
     if (response.success && response.data) {
       records.value = response.data.records;
       pagination.total = response.data.total;
@@ -286,7 +287,7 @@ const handleTableChange = (
 
 // 查看记录详情
 const viewRecord = (recordId: number) => {
-  router.push(`/researcher/records/${recordId}`);
+  router.push(`/researcher/record/${recordId}`);
 };
 
 // 导出匿名化数据
@@ -318,8 +319,22 @@ const handleExport = async () => {
 
 // 获取记录类型标签
 const getRecordTypeLabel = (type: string): string => {
+  // 检查是否是内置记录类型
   const recordType = recordTypeOptions.value.find(t => t.value === type);
-  return recordType ? recordType.label : type;
+  if (recordType) {
+    return recordType.label;
+  }
+  
+  // 转换内部枚举类型为可读格式
+  if (type) {
+    // 将下划线格式转换为空格分隔的首字母大写格式
+    return type.toLowerCase()
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+  
+  return type || '未知类型';
 };
 
 onMounted(() => {

@@ -80,22 +80,23 @@ export interface GetResearcherRecordsParams {
 
 // 健康记录扩展信息 (不使用扩展接口以避免类型不兼容问题)
 export interface ResearcherAccessibleRecord {
-  _id: string;
   id: number;
+  mongo_id: string;
   title: string;
   record_type: string;
-  description?: string;
-  mongo_id: string;
   patient_id: number;
-  doctor_id: number;
-  doctor_name?: string;
-  patient_name?: string;
-  record_date: string;
-  visibility: RecordVisibility;
-  is_encrypted: boolean;
+  doctor_id: number | null;
   created_at: string;
-  updated_at?: string;
-  tags?: string[];
+  updated_at?: string | null;
+  visibility: string;
+  is_encrypted: boolean;
+  description?: string | null;
+  doctor_name?: string | null;
+  patient_name?: string | null;
+  tags?: string | string[];
+  institution?: string | null;
+
+  _id?: string;
   files?: any[];
   data?: any;
 }

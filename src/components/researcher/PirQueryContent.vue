@@ -644,18 +644,18 @@ const handleDecrypt = async () => {
   // 验证密钥是否存在
   if (!decryptKey.value.trim()) {
     message.error('请先获取或输入解密密钥');
-    return;
-  }
+      return;
+    }
 
   const recordId = currentResult.value.matched_record_id;
   keyLoading.value = true;
-  
-  try {
+
+    try {
     const res = await decryptPIRResult(
-      currentResult.value.encrypted_result,
+        currentResult.value.encrypted_result,
       recordId,
-      decryptKey.value
-    );
+        decryptKey.value
+      );
     
     console.log(res);
     if (res.success) {
@@ -671,7 +671,7 @@ const handleDecrypt = async () => {
     } else {
       message.error(res.message || '解密失败');
     }
-  } catch (error) {
+    } catch (error) {
     console.error('解密失败:', error);
     message.error('解密过程中发生错误');
   } finally {
@@ -686,7 +686,7 @@ const renderFeatureChart = async () => {
     console.log('没有数据可渲染');
     return;
   }
-  
+
   // 确保DOM已经更新
   await nextTick();
   
@@ -696,7 +696,7 @@ const renderFeatureChart = async () => {
       console.error('找不到图表DOM元素');
       return;
     }
-    
+
     // 初始化之前先销毁旧的实例
     let existingChart = echarts.getInstanceByDom(chartDom);
     if (existingChart) {
