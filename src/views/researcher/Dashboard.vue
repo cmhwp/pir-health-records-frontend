@@ -36,10 +36,6 @@
           <template #icon><fund-outlined /></template>
           <span>隐私查询</span> 
         </a-menu-item>
-        <a-menu-item key="teams">
-          <template #icon><team-outlined /></template>
-          <span>合作团队</span>
-        </a-menu-item>
       </a-menu>
     </a-layout-sider>
     
@@ -234,8 +230,6 @@ const currentPageTitle = computed(() => {
     return '研究项目';
   } else if (path.includes('/researcher/analytics')) {
     return '数据分析';  
-  } else if (path.includes('/researcher/teams')) {
-    return '合作团队';
   } else if (path.includes('/researcher/records')) {
     return '健康记录';
   } else if (path.includes('/researcher/profile')) {
@@ -263,9 +257,6 @@ const handleMenuSelect = ({ key }: { key: string }) => {
       break;
     case 'analytics':
       router.push('/researcher/analytics');
-      break;  
-    case 'teams':
-      router.push('/researcher/teams');
       break;
     case 'profile':
       router.push('/researcher/profile');
@@ -377,8 +368,6 @@ const setInitialSelectedKey = () => {
     selectedKeys.value = ['projects'];
   } else if (path.includes('/researcher/analytics')) {
     selectedKeys.value = ['analytics']; 
-  } else if (path.includes('/researcher/teams')) {
-    selectedKeys.value = ['teams'];
   } else if (path.includes('/researcher/records')) {
     selectedKeys.value = ['records'];
   } else if (path.includes('/researcher/profile')) {

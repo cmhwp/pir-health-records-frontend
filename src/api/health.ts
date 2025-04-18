@@ -62,6 +62,11 @@ export const createHealthRecord = async (
     formData.append('file_description', data.file_description);
   }
   
+  // 添加加密密钥（如果有）
+  if (data.encryption_key) {
+    formData.append('encryption_key', data.encryption_key);
+  }
+  
   return request.post(`${API_PATH}/records`, formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
@@ -425,17 +430,21 @@ export const accessSharedRecordByKey = async (
 ): Promise<ApiResponse<ViewSharedRecordResponse>> => {
   return request.get(`${API_PATH}/shared/access/${accessKey}`);
 };
-
-/**
- * 获取记录类型列表
- */
-export const getRecordTypes = (): Promise<ApiResponse<RecordTypesResponse>> => {
-  return request.get('/health/record-types');
-};
-
 /**
  * 获取医疗机构列表
  */
 export const getInstitutions = (): Promise<ApiResponse<InstitutionsResponse>> => {
   return request.get(`${API_PATH}/institutions`);
+};
+
+/**
+ * 解密健康记录
+ */
+export const decryptHealthRecord = async (
+  recordId: string,
+  encryptionKey: string
+): Promise<ApiResponse<{ record: HealthRecord }>> => {
+  return request.post(`${API_PATH}/records/${recordId}/decrypt`, {
+    encryption_key: encryptionKey
+  });
 }; 

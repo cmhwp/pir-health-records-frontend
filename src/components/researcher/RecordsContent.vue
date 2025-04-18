@@ -65,7 +65,7 @@
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'record_type'">
-            <a-tag color="blue">{{ getRecordTypeLabel(record.record_type) }}</a-tag>
+            <a-tag :color="getRecordTypeColor(record.record_type)">{{ getRecordTypeName(record.record_type) }}</a-tag>
           </template>
           
           <template v-if="column.key === 'visibility'">
@@ -138,7 +138,7 @@ const exportModalVisible = ref<boolean>(false);
 const exporting = ref<boolean>(false);
 
 // 记录类型定义
-const { recordTypeOptions } = useRecordTypes();
+const { recordTypeOptions,getRecordTypeName, getRecordTypeColor, getRecordTypeShort } = useRecordTypes();
 
 // 筛选器参数
 const filterParams = reactive<GetResearcherRecordsParams>({

@@ -54,13 +54,37 @@
               <a-descriptions-item label="版本">
                 {{ record.version }}
               </a-descriptions-item>
-              <a-descriptions-item label="标签" :span="3">
+              <a-descriptions-item label="加密状态" :span="2">
+                <a-tag :color="record.is_encrypted ? 'purple' : 'green'">
+                  {{ record.is_encrypted ? '已加密' : '未加密' }}
+                </a-tag>
+                <a-button 
+                  v-if="record.is_encrypted" 
+                  type="link" 
+                  size="small" 
+                  @click="showDecryptModal"
+                >
+                  <template #icon><UnlockOutlined /></template>
+                  解密查看
+                </a-button>
+              </a-descriptions-item>
+              <a-descriptions-item label="标签" :span="1">
                 <a-tag v-for="tag in recordTags" :key="tag" color="blue">{{ tag }}</a-tag>
                 <span v-if="!recordTags.length">无标签</span>
               </a-descriptions-item>
             </a-descriptions>
 
             <a-divider />
+
+            <!-- 加密记录提示 -->
+            <a-alert
+              v-if="record.is_encrypted"
+              message="加密记录"
+              description="此记录已加密，需要输入正确的密钥才能查看完整内容。"
+              type="warning"
+              showIcon
+              style="margin-bottom: 16px"
+            />
 
             <div v-if="record.description">
               <h3>记录描述</h3>
@@ -119,6 +143,14 @@
 
         <a-tab-pane key="versions" tab="版本历史">
           <a-card>
+            <div class="version-header" style="margin-bottom: 16px">
+              <h3>版本历史记录</h3>
+              <div>
+                <a-tag color="green">当前版本: {{ record?.version || '-' }}</a-tag>
+                <a-tag color="blue">共 {{ versions.length }} 个版本</a-tag>
+              </div>
+            </div>
+            
             <a-timeline v-if="versions && versions.length > 0">
               <a-timeline-item v-for="version in versions" :key="version.version" :color="version.version === record?.version ? 'green' : 'blue'">
                 <template #dot v-if="version.version === record?.version">
@@ -130,6 +162,10 @@
                     <a-space>
                       <a-tag v-if="version.version === record?.version" color="green">当前版本</a-tag>
                       <a-button v-else size="small" @click="viewVersion(version.version)">查看</a-button>
+                      <a-button v-if="version.version !== versions[0].version && version.version !== record?.version" 
+                               size="small" type="dashed" @click="compareVersions(versions[0].version, version.version)">
+                        与最新版本比较
+                      </a-button>
                       <a-button v-if="version.version !== record?.version" size="small" type="primary" @click="restoreVersion(version.version)">恢复此版本</a-button>
                     </a-space>
                   </div>
@@ -260,6 +296,218 @@
       <p>确定要撤销此共享记录吗？</p>
       <p>撤销后，对方将无法再访问该记录。</p>
     </a-modal>
+
+    <!-- 解密记录模态框 -->
+    <a-modal
+      v-model:visible="decryptModalVisible"
+      title="解密记录"
+      @ok="decryptRecord"
+      :confirm-loading="decrypting"
+      okText="解密"
+      cancelText="取消"
+    >
+      <p>此记录已加密，请输入解密密钥以查看完整内容。</p>
+      <a-form-item label="解密密钥" required>
+        <a-input-password
+          v-model:value="decryptKey"
+          placeholder="请输入解密密钥"
+          :maxLength="32"
+        />
+      </a-form-item>
+      <p style="color: #ff4d4f; font-size: 12px;">注意：密钥错误会导致解密失败，无法查看记录内容。</p>
+    </a-modal>
+
+    <!-- 版本查看模态框 -->
+    <a-modal
+      v-model:visible="versionModalVisible"
+      :title="`版本 ${versionToView} 记录详情`"
+      width="800px"
+      :footer="null"
+    >
+      <a-spin :spinning="viewingVersion">
+        <div v-if="versionRecord" class="version-view-container">
+          <div class="version-info-header" style="margin-bottom: 16px; background-color: #f0f5ff; padding: 12px; border-radius: 4px;">
+            <div><strong>版本:</strong> {{ versionRecord.version }}</div>
+            <div><strong>修改时间:</strong> {{ formatDate(versionRecord.updated_at || versionRecord.created_at) }}</div>
+            <div><strong>修改人:</strong> {{ '用户' }}</div>
+          </div>
+          
+          <a-descriptions bordered>
+            <a-descriptions-item label="记录标题" :span="3">
+              {{ versionRecord.title }}
+            </a-descriptions-item>
+            <a-descriptions-item label="记录类型">
+              <a-tag :color="getRecordTypeColor(versionRecord.record_type)">
+                {{ getRecordTypeName(versionRecord.record_type) }}
+              </a-tag>
+            </a-descriptions-item>
+            <a-descriptions-item label="记录日期">
+              {{ formatDate(versionRecord.record_date) }}
+            </a-descriptions-item>
+            <a-descriptions-item label="创建时间">
+              {{ formatDate(versionRecord.created_at) }}
+            </a-descriptions-item>
+            <a-descriptions-item label="医疗机构" :span="2">
+              {{ versionRecord.institution || '未记录' }}
+            </a-descriptions-item>
+            <a-descriptions-item label="医生姓名">
+              {{ versionRecord.doctor_name || '未记录' }}
+            </a-descriptions-item>
+            <a-descriptions-item label="可见性">
+              {{ getVisibilityName(versionRecord.visibility) }}
+            </a-descriptions-item>
+            <a-descriptions-item label="版本">
+              {{ versionRecord.version }}
+            </a-descriptions-item>
+            <a-descriptions-item label="加密状态" :span="2">
+              <a-tag :color="versionRecord.is_encrypted ? 'purple' : 'green'">
+                {{ versionRecord.is_encrypted ? '已加密' : '未加密' }}
+              </a-tag>
+            </a-descriptions-item>
+          </a-descriptions>
+
+          <a-divider />
+
+          <div v-if="versionRecord.description">
+            <h3>记录描述</h3>
+            <p>{{ versionRecord.description }}</p>
+          </div>
+
+          <!-- 用药记录特定字段 -->
+          <div v-if="versionRecord.medication && versionRecord.medication.medication_name" style="margin-top: 20px">
+            <h3>用药信息</h3>
+            <a-descriptions bordered>
+              <a-descriptions-item label="药物名称" :span="3">
+                {{ versionRecord.medication.medication_name }}
+              </a-descriptions-item>
+              <a-descriptions-item label="剂量">
+                {{ versionRecord.medication.dosage || '未记录' }}
+              </a-descriptions-item>
+              <a-descriptions-item label="频率">
+                {{ versionRecord.medication.frequency || '未记录' }}
+              </a-descriptions-item>
+              <a-descriptions-item label="用药期间">
+                {{ formatDateRange(versionRecord.medication.start_date, versionRecord.medication.end_date) }}
+              </a-descriptions-item>
+              <a-descriptions-item label="用药说明" :span="3" v-if="versionRecord.medication.instructions">
+                {{ versionRecord.medication.instructions }}
+              </a-descriptions-item>
+              <a-descriptions-item label="副作用" :span="3" v-if="versionRecord.medication.side_effects">
+                {{ versionRecord.medication.side_effects }}
+              </a-descriptions-item>
+            </a-descriptions>
+          </div>
+
+          <!-- 相关文件列表 -->
+          <div v-if="versionRecord.files && versionRecord.files.length > 0" style="margin-top: 20px">
+            <h3>相关文件</h3>
+            <a-list size="small" bordered>
+              <a-list-item v-for="file in versionRecord.files" :key="file.file_path">
+                <a-list-item-meta>
+                  <template #title>{{ file.file_name }}</template>
+                  <template #description>{{ formatFileSize(file.file_size) }} · {{ formatDate(file.uploaded_at) }}</template>
+                  <template #avatar>
+                    <file-outlined />
+                  </template>
+                </a-list-item-meta>
+                <template #actions>
+                  <a-button type="link" @click="downloadFile(file.file_path)">
+                    <template #icon><download-outlined /></template>
+                    下载
+                  </a-button>
+                </template>
+              </a-list-item>
+            </a-list>
+          </div>
+        </div>
+        <a-empty v-else description="未找到版本记录数据" />
+      </a-spin>
+      
+      <template #footer>
+        <a-space>
+          <a-button @click="versionModalVisible = false">关闭</a-button>
+          <a-button v-if="versionRecord && versionRecord.version !== record?.version" 
+                   type="primary" 
+                   @click="restoreVersion(versionToView)">
+            恢复到此版本
+          </a-button>
+        </a-space>
+      </template>
+    </a-modal>
+
+    <!-- 版本比较模态框 -->
+    <a-modal
+      v-model:visible="compareModalVisible"
+      title="版本比较"
+      width="900px"
+      :footer="null"
+    >
+      <a-spin :spinning="comparing">
+        <div v-if="compareRecords.v1 && compareRecords.v2" class="compare-container">
+          <div class="compare-header" style="margin-bottom: 16px; display: flex; justify-content: space-between">
+            <div class="compare-version" style="width: 48%; background-color: #f6ffed; padding: 12px; border-radius: 4px;">
+              <h3>版本 {{ compareRecords.v1.version }}</h3>
+              <div><strong>修改时间:</strong> {{ formatDate(compareRecords.v1.created_at) }}</div>
+            </div>
+            
+            <div style="width: 3%; display: flex; align-items: center; justify-content: center">
+              <swap-outlined />
+            </div>
+            
+            <div class="compare-version" style="width: 48%; background-color: #f0f5ff; padding: 12px; border-radius: 4px;">
+              <h3>版本 {{ compareRecords.v2.version }}</h3>
+              <div><strong>修改时间:</strong> {{ formatDate(compareRecords.v2.created_at) }}</div>
+            </div>
+          </div>
+          
+          <div class="compare-content">
+            <a-collapse>
+              <a-collapse-panel key="title" header="标题">
+                <div class="compare-field" style="display: flex; justify-content: space-between">
+                  <div class="compare-value" style="width: 48%">{{ compareRecords.v1.title }}</div>
+                  <div style="width: 3%; display: flex; align-items: center; justify-content: center">
+                    <div v-if="compareRecords.v1.title !== compareRecords.v2.title">
+                      <arrow-right-outlined style="color: #ff4d4f" />
+                    </div>
+                    <div v-else>
+                      <minus-outlined />
+                    </div>
+                  </div>
+                  <div class="compare-value" style="width: 48%">{{ compareRecords.v2.title }}</div>
+                </div>
+              </a-collapse-panel>
+              
+              <a-collapse-panel key="description" header="描述">
+                <div class="compare-field" style="display: flex; justify-content: space-between">
+                  <div class="compare-value" style="width: 48%">{{ compareRecords.v1.description || '无描述' }}</div>
+                  <div style="width: 3%; display: flex; align-items: center; justify-content: center">
+                    <div v-if="compareRecords.v1.description !== compareRecords.v2.description">
+                      <arrow-right-outlined style="color: #ff4d4f" />
+                    </div>
+                    <div v-else>
+                      <minus-outlined />
+                    </div>
+                  </div>
+                  <div class="compare-value" style="width: 48%">{{ compareRecords.v2.description || '无描述' }}</div>
+                </div>
+              </a-collapse-panel>
+            </a-collapse>
+          </div>
+        </div>
+        <a-empty v-else description="无法比较版本" />
+      </a-spin>
+      
+      <template #footer>
+        <a-space>
+          <a-button @click="compareModalVisible = false">关闭</a-button>
+          <a-button v-if="compareRecords.v2 && compareRecords.v2.version !== record?.version" 
+                   type="primary" 
+                   @click="restoreVersion(compareRecords.v2.version)">
+            恢复到此版本
+          </a-button>
+        </a-space>
+      </template>
+    </a-modal>
   </div>
 </template>
 
@@ -274,7 +522,11 @@ import {
   DownloadOutlined,
   FileOutlined,
   CheckCircleOutlined,
-  StopOutlined
+  StopOutlined,
+  UnlockOutlined,
+  SwapOutlined,
+  ArrowRightOutlined,
+  MinusOutlined
 } from '@ant-design/icons-vue';
 import {
   getHealthRecord,
@@ -285,7 +537,8 @@ import {
   getRecordsSharedByMe,
   shareHealthRecord,
   revokeSharedRecord,
-  getShareableUsers
+  getShareableUsers,
+  decryptHealthRecord
 } from '@/api/health';
 
 import {
@@ -349,6 +602,28 @@ const revokeModalVisible = ref(false);
 const revoking = ref(false);
 const shareIdToRevoke = ref<string>('');
 
+// 解密相关
+const decryptModalVisible = ref(false);
+const decrypting = ref(false);
+const decryptKey = ref('');
+
+// 版本查看相关变量
+const versionModalVisible = ref(false);
+const versionToView = ref(0);
+const versionRecord = ref<HealthRecord | null>(null);
+const viewingVersion = ref(false);
+
+// 版本比较相关变量
+const compareModalVisible = ref(false);
+const compareRecords = ref<{ 
+  v1: any; 
+  v2: any 
+}>({
+  v1: null,
+  v2: null
+});
+const comparing = ref(false);
+
 // 使用hook获取记录类型相关函数
 const { getRecordTypeName, getRecordTypeColor } = useRecordTypes();
 
@@ -378,6 +653,7 @@ const fetchVersions = async () => {
   loadingVersions.value = true;
   try {
     const response = await getRecordVersions(recordId.value);
+    console.log('获取版本历史API响应:', response);
     if (response.success && response.data) {
       // 将 API 返回的数据格式化为符合 VersionInfo 类型的格式
       versions.value = response.data.versions.map((v: any) => ({
@@ -400,7 +676,24 @@ const fetchVersions = async () => {
 
 // 查看特定版本
 const viewVersion = async (versionNumber: number) => {
-  router.push(`/patient/record/${recordId.value}?version=${versionNumber}`);
+  // 加载特定版本的记录
+  versionToView.value = versionNumber;
+  viewingVersion.value = true;
+  
+  try {
+    const response = await getRecordVersion(recordId.value, versionNumber);
+    if (response.success && response.data) {
+      versionRecord.value = response.data.record;
+      versionModalVisible.value = true;
+    } else {
+      message.error(response.message || '获取版本记录失败');
+    }
+  } catch (error) {
+    console.error('获取版本记录失败:', error);
+    message.error('获取版本记录失败');
+  } finally {
+    viewingVersion.value = false;
+  }
 };
 
 // 准备恢复版本
@@ -669,10 +962,144 @@ watch(activeTab, (newTab) => {
 onMounted(() => {
   fetchRecordDetail();
 });
+
+// 显示解密模态框
+const showDecryptModal = () => {
+  decryptModalVisible.value = true;
+};
+
+// 解密记录
+const decryptRecord = async () => {
+  if (!recordId.value || !decryptKey.value) {
+    message.warning('请输入解密密钥');
+    return;
+  }
+  
+  decrypting.value = true;
+  try {
+    const response = await decryptHealthRecord(recordId.value, decryptKey.value);
+    
+    if (response.success) {
+      message.success('记录已成功解密');
+      // 更新记录数据
+      if (response.data && response.data.record) {
+        record.value = response.data.record;
+      } else {
+        // 如果返回的record不完整，则重新获取记录
+        await fetchRecordDetail();
+      }
+      // 关闭模态框并清除密钥
+      decryptModalVisible.value = false;
+      decryptKey.value = '';
+    } else {
+      message.error(response.message || '解密失败');
+    }
+  } catch (error) {
+    console.error('解密失败:', error);
+    message.error('解密失败');
+  } finally {
+    decrypting.value = false;
+  }
+};
+
+// 版本比较
+const compareVersions = async (baseVersion: number, compareVersion: number) => {
+  compareModalVisible.value = true;
+  comparing.value = true;
+  
+  try {
+    const response1 = await getRecordVersion(recordId.value, baseVersion);
+    const response2 = await getRecordVersion(recordId.value, compareVersion);
+    
+    if (response1.success && response2.success && response1.data && response2.data) {
+      compareRecords.value = {
+        v1: response1.data.record,
+        v2: response2.data.record
+      };
+    } else {
+      message.error('获取版本记录失败');
+    }
+  } catch (error) {
+    console.error('获取版本记录失败:', error);
+    message.error('获取版本记录失败');
+  } finally {
+    comparing.value = false;
+  }
+};
 </script>
 
 <style scoped>
 .record-detail-container {
   width: 100%;
+}
+
+.version-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.version-header h3 {
+  margin: 0;
+}
+
+.version-header div {
+  display: flex;
+  align-items: center;
+}
+
+.version-header div a-tag {
+  margin-left: 8px;
+}
+
+.version-view-container {
+  padding: 16px;
+}
+
+.version-info-header {
+  background-color: #f0f5ff;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.compare-container {
+  padding: 16px;
+}
+
+.compare-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.compare-version {
+  width: 48%;
+  background-color: #f6ffed;
+  padding: 12px;
+  border-radius: 4px;
+}
+
+.compare-version h3 {
+  margin: 0 0 8px 0;
+}
+
+.compare-version a-tag {
+  margin-left: 8px;
+}
+
+.compare-content {
+  padding: 16px;
+}
+
+.compare-field {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.compare-value {
+  width: 48%;
 }
 </style> 

@@ -1,5 +1,5 @@
 import { ref, readonly } from 'vue';
-import { getRecordTypes } from '@/api/health';
+import { getRecordTypes } from '@/api/patient';
 import type { RecordTypeInfo } from '@/types/health';
 
 // 创建状态

@@ -220,18 +220,6 @@ const routes: Array<RouteRecordRaw> = [
         meta: { requiresAuth: true, role: 'researcher', title: '隐私查询' }
       },
       {
-        path: 'teams',
-        name: 'ResearcherTeams',
-        component: () => import('@/components/researcher/TeamsContent.vue'),
-        meta: { requiresAuth: true, role: 'researcher', title: '研究团队' }
-      },
-      {
-        path: 'teams/:id',
-        name: 'TeamDetails',
-        component: () => import('@/components/researcher/TeamDetails.vue'),
-        meta: { requiresAuth: true, role: 'researcher', title: '团队详情' }
-      },
-      {
         path: 'profile',
         name: 'ResearcherProfile',
         component: () => import('@/views/auth/Profile.vue'),

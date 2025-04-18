@@ -92,7 +92,7 @@
               
               <template v-if="column.key === 'actions'">
                 <div class="action-buttons">
-                  <a-button type="link" size="small" @click="viewRecord(record.record_id, record.mongo_id)">
+                  <a-button type="link" size="small" @click="viewRecord(record.record_id)">
                     <template #icon><eye-outlined /></template>
                     查看
                   </a-button>
@@ -573,28 +573,33 @@ const fetchSharedByMe = async () => {
       onlyValidRecords.value,
       sharedWithId
     );
-    console.log('共享记录API响应:', response);
     
     if (response.success && response.data) {
-      // 检查API返回的原始数据
-      console.log('API返回的共享记录:', response.data.shared_records);
-      
       sharedByMeRecords.value = response.data.shared_records as SharedRecordWithUser[];
-      // 调试共享记录是否包含access_key
-      if (sharedByMeRecords.value.length > 0) {
-        console.log('共享记录样本:', sharedByMeRecords.value[0]);
-        console.log('是否包含access_key:', sharedByMeRecords.value[0].access_key ? '是' : '否');
-        console.log('记录的所有属性:', Object.keys(sharedByMeRecords.value[0]));
+      
+      // 确保每条记录都有必要的字段，防止界面出错
+      sharedByMeRecords.value = sharedByMeRecords.value.map(record => {
+        // 确保record_info存在
+        if (!record.record_info) {
+          record.record_info = {
+            title: '未知记录',
+            record_type: '',
+            record_date: ''
+          };
+        }
         
-        // 如果后端返回的字段名可能不同，尝试找出可能的access_key字段
-        const record = sharedByMeRecords.value[0];
-        const possibleFields = ['access_key', 'accessKey', 'access_token', 'accessToken', 'key', 'token'];
-        possibleFields.forEach(field => {
-          if ((record as any)[field]) {
-            console.log(`找到可能的访问密钥字段: ${field} =`, (record as any)[field]);
-          }
-        });
-      }
+        // 确保shared_with存在
+        if (!record.shared_with) {
+          record.shared_with = {
+            id: 0,
+            username: '未知用户',
+            full_name: '未知用户'
+          };
+        }
+        
+        return record;
+      });
+      
       sharedByMePagination.total = response.data.total;
     } else {
       message.error(response.message || '获取共享记录失败');
@@ -619,6 +624,30 @@ const fetchSharedWithMe = async () => {
     
     if (response.success && response.data) {
       sharedWithMeRecords.value = response.data.shared_records as SharedRecordWithOwner[];
+      
+      // 确保每条记录都有必要的字段，防止界面出错
+      sharedWithMeRecords.value = sharedWithMeRecords.value.map(record => {
+        // 确保record_info存在
+        if (!record.record_info) {
+          record.record_info = {
+            title: '未知记录',
+            record_type: '',
+            record_date: ''
+          };
+        }
+        
+        // 确保owner存在
+        if (!record.owner) {
+          record.owner = {
+            id: 0,
+            username: '未知用户',
+            full_name: '未知用户'
+          };
+        }
+        
+        return record;
+      });
+      
       sharedWithMePagination.total = response.data.total;
     } else {
       message.error(response.message || '获取共享记录失败');
@@ -721,22 +750,40 @@ const formatFileSize = (size: number): string => {
 };
 
 // 查看记录详情
-const viewRecord = async (recordId: string, mongoId?: string) => {
+const viewRecord = async (recordId: string) => {
   recordDrawerVisible.value = true;
   recordLoading.value = true;
   sharedInfo.value = null;
   
   try {
-    const recordIdToUse = mongoId || recordId;
-    const response = await getHealthRecord(recordIdToUse);
+    console.log(`正在获取记录，使用ID: ${recordId}`);
+    
+    const response = await getHealthRecord(recordId);
     if (response.success && response.data) {
       currentRecord.value = response.data.record;
     } else {
-      message.error('获取记录详情失败');
+      message.error(response.message || '获取记录详情失败');
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('获取记录详情失败:', error);
-    message.error('获取记录详情失败');
+    
+    // 提供更明确的错误消息
+    if (error.response) {
+      const status = error.response.status;
+      const errorMsg = error.response.data?.message || '未知错误';
+      
+      if (status === 400) {
+        message.error(`无效的记录ID: ${errorMsg}`);
+      } else if (status === 404) {
+        message.error(`记录不存在: ${errorMsg}`);
+      } else {
+        message.error(`获取记录详情失败 (${status}): ${errorMsg}`);
+      }
+    } else if (error.message) {
+      message.error(`获取记录详情失败: ${error.message}`);
+    } else {
+      message.error('获取记录详情失败，请稍后再试');
+    }
   } finally {
     recordLoading.value = false;
   }
@@ -872,18 +919,9 @@ onMounted(() => {
 const showShareLink = (record: SharedRecordWithUser) => {
   currentShareRecord.value = record;
   
-  // 调试信息
-  console.log('显示共享链接的记录数据:', record);
-  
   // 检查record中是否有access_key
   if (!record.access_key) {
-    // 从URL参数中获取 - 测试用例
-    const keyFromExample = '8NmpteStql9sHABTv32D7g';
-    console.log('数据中没有access_key，使用示例值:', keyFromExample);
-    
-    // 使用示例值
-    shareLink.value = getSharedRecordAccessUrl(keyFromExample);
-    shareLinkModalVisible.value = true;
+    message.error('无法获取共享链接，缺少访问密钥');
     return;
   }
   

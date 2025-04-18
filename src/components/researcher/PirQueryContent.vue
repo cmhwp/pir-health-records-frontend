@@ -324,7 +324,7 @@
                           <div class="record-meta-info">
                             <a-row :gutter="16">
                               <a-col :span="8">
-                                <p><strong>记录类型:</strong> <a-tag color="cyan">{{ getRecordTypeName(record.record_type) }}</a-tag></p>
+                                <p><strong>记录类型:</strong> <a-tag :color="getRecordTypeColor(record.record_type)">{{ getRecordTypeName(record.record_type) }}</a-tag></p>
                               </a-col>
                               <a-col :span="8">
                                 <p><strong>记录日期:</strong> {{ formatDate(record.record_date) }}</p>
@@ -429,7 +429,7 @@ import * as echarts from 'echarts';
 import { useRecordTypes } from '@/hooks/useRecordTypes';
 
 // 在组件顶部调用useRecordTypes，获取返回的函数
-const { getRecordTypeName } = useRecordTypes();
+const { getRecordTypeName, getRecordTypeColor, getRecordTypeShort } = useRecordTypes();
 
 // 查询表单
 const queryForm = reactive({

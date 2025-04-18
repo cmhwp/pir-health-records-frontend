@@ -78,6 +78,10 @@ export interface HealthRecord {
   updated_at: string;
   version: number;
   version_history?: VersionInfo[];
+  is_encrypted?: boolean;
+  requires_decryption?: boolean;
+  encryption_date?: string;
+  integrity_hash?: string;
 }
 
 // Request/Response interfaces
@@ -90,6 +94,7 @@ export interface CreateRecordRequest {
     record_date?: string;
     institution?: string;
     doctor_name?: string;
+    doctor_id?: number;
     visibility?: RecordVisibility;
     tags?: string;
     medication?: MedicationInfo;
@@ -98,6 +103,7 @@ export interface CreateRecordRequest {
   };
   files?: File[];
   file_description?: string;
+  encryption_key?: string;
 }
 
 export interface CreateRecordResponse {

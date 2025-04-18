@@ -88,6 +88,7 @@
                     showSearch
                     :filterOption="filterInstitution"
                     :loading="loadingInstitutions"
+                    @change="handleInstitutionChange"
                   >
                     <a-select-option v-for="inst in institutionOptions" :key="inst.id" :value="inst.name">
                       {{ inst.name }}
@@ -98,10 +99,21 @@
               </a-col>
               <a-col :span="12">
                 <a-form-item name="doctor_name" label="医生姓名">
-                  <a-input
+                  <a-select
                     v-model:value="formState.record_data.doctor_name"
-                    placeholder="请输入医生姓名"
-                  />
+                    placeholder="请选择医生"
+                    style="width: 100%"
+                    showSearch
+                    :filterOption="filterDoctor"
+                    :loading="loadingDoctors"
+                    :disabled="!formState.record_data.institution"
+                    @change="handleDoctorChange"
+                  >
+                    <a-select-option v-for="doctor in doctorOptions" :key="doctor.id" :value="doctor.full_name">
+                      {{ doctor.full_name }}
+                      <span v-if="doctor.info?.specialty" style="color: #999; font-size: 12px;"> ({{ doctor.info.specialty }})</span>
+                    </a-select-option>
+                  </a-select>
                 </a-form-item>
               </a-col>
             </a-row>
@@ -256,6 +268,32 @@
               </div>
             </a-form-item>
             
+            <!-- 加密选项 -->
+            <a-divider />
+            
+            <a-form-item>
+              <a-switch
+                v-model:checked="enableEncryption"
+                checked-children="启用记录加密"
+                un-checked-children="未加密"
+              />
+              <div style="margin-top: 8px; color: rgba(0, 0, 0, 0.45); font-size: 14px">
+                启用加密可以保护您的敏感健康信息，需要密钥才能解密查看
+              </div>
+            </a-form-item>
+            
+            <a-form-item v-if="enableEncryption" name="encryption_key" label="加密密钥">
+              <a-input-password
+                v-model:value="encryptionKey"
+                placeholder="请输入加密密钥"
+                :maxLength="32"
+                show-count
+              />
+              <div style="margin-top: 4px; color: rgba(0, 0, 0, 0.45); font-size: 12px">
+                请妥善保管此密钥，忘记密钥将无法恢复记录内容
+              </div>
+            </a-form-item>
+            
             <a-divider />
             
             <div style="text-align: center; padding: 16px 0">
@@ -285,9 +323,10 @@ import {
   DeleteOutlined
 } from '@ant-design/icons-vue';
 import { createHealthRecord } from '@/api/health';
-import { getInstitutions } from '@/api/patient';
+import { getInstitutions,getDoctors } from '@/api/patient';
 import { RecordVisibility, type CreateRecordRequest, type MedicationInfo, type InstitutionInfo } from '@/types/health';
 import { useRecordTypes } from '@/hooks/useRecordTypes';
+import type { Doctor } from '@/types/patient';
 
 // Define an extended version of record data with required medication
 interface ExtendedRecordData {
@@ -297,6 +336,7 @@ interface ExtendedRecordData {
   record_date: string;
   institution: string;
   doctor_name: string;
+  doctor_id?: number;  // 添加医生ID字段
   visibility: RecordVisibility;
   tags: string;
   medication: MedicationInfo; // Required, not optional
@@ -313,6 +353,8 @@ const router = useRouter();
 const formRef = ref<FormInstance>();
 const submitting = ref(false);
 const pirProtected = ref(true);
+const enableEncryption = ref(false);
+const encryptionKey = ref('');
 
 // 使用记录类型hook
 const { recordTypeOptions, isLoading: loadingRecordTypes } = useRecordTypes();
@@ -488,6 +530,11 @@ const handleSubmit = async () => {
       file_description: formState.file_description
     };
     
+    // 添加加密密钥（如果启用了加密）
+    if (enableEncryption.value && encryptionKey.value) {
+      apiRequest.encryption_key = encryptionKey.value;
+    }
+    
     // 提交请求
     const response = await createHealthRecord(apiRequest);
     
@@ -515,9 +562,45 @@ const goBack = () => {
 const institutionOptions = ref<InstitutionInfo[]>([]);
 const loadingInstitutions = ref(false);
 
+// 医生数据
+const doctorOptions = ref<Doctor[]>([]);
+const loadingDoctors = ref(false);
+
 // 过滤医疗机构选项
 const filterInstitution = (input: string, option: any) => {
   return option.children[0].toLowerCase().indexOf(input.toLowerCase()) >= 0;
+};
+
+// 过滤医生选项
+const filterDoctor = (input: string, option: any) => {
+  return option.children[0].toLowerCase().indexOf(input.toLowerCase()) >= 0;
+};
+
+// 处理医生变更
+const handleDoctorChange = (value: string) => {
+  if (value) {
+    // 查找选中的医生
+    const selectedDoctor = doctorOptions.value.find(doc => doc.full_name === value);
+    if (selectedDoctor) {
+      // 保存医生ID
+      formState.record_data.doctor_id = selectedDoctor.id;
+    }
+  } else {
+    // 清空医生ID
+    formState.record_data.doctor_id = undefined;
+  }
+};
+
+// 处理医疗机构变更，加载对应医生
+const handleInstitutionChange = (value: string) => {
+  if (value) {
+    loadDoctorsByInstitution(value);
+  } else {
+    // 清空医生选项
+    doctorOptions.value = [];
+    formState.record_data.doctor_name = '';
+    formState.record_data.doctor_id = undefined;
+  }
 };
 
 // 加载医疗机构
@@ -535,6 +618,26 @@ const loadInstitutions = async () => {
     message.error('获取医疗机构列表失败');
   } finally {
     loadingInstitutions.value = false;
+  }
+};
+
+// 根据机构加载医生
+const loadDoctorsByInstitution = async (institutionName: string) => {
+  loadingDoctors.value = true;
+  try {
+    const response = await getDoctors({ hospital: institutionName });
+    if (response.success && response.data) {
+      doctorOptions.value = response.data.doctors;
+      // 清空当前选择的医生
+      formState.record_data.doctor_name = '';
+    } else {
+      message.error(response.message || '获取医生列表失败');
+    }
+  } catch (error) {
+    console.error('获取医生列表失败:', error);
+    message.error('获取医生列表失败');
+  } finally {
+    loadingDoctors.value = false;
   }
 };
 

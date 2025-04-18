@@ -120,35 +120,43 @@
         <template v-else-if="column.key === 'visibility'">
           {{ getVisibilityName(record.visibility) }}
         </template>
+        <template v-else-if="column.key === 'encryption_status'">
+          <a-tag v-if="record.is_encrypted" color="purple">
+            <template #icon><lock-outlined /></template>
+            已加密
+          </a-tag>
+        </template>
         <template v-else-if="column.key === 'action'">
           <a-space>
-            <a-button type="link" size="small" @click="viewRecord(record._id)">
-              <template #icon><EyeOutlined /></template>
-              查看
-            </a-button>
-            <a-button type="link" size="small" @click="editRecord(record._id)">
-              <template #icon><EditOutlined /></template>
-              编辑
-            </a-button>
-            <a-button type="link" size="small" @click="shareRecord(record._id)">
-              <template #icon><ShareAltOutlined /></template>
-              分享
-            </a-button>
-            <a-dropdown>
+            <a-tooltip title="查看">
+              <a-button type="link" size="small" @click="viewRecord(record._id)">
+                <template #icon><eye-outlined /></template>
+              </a-button>
+            </a-tooltip>
+            <a-tooltip title="编辑">
+              <a-button type="link" size="small" @click="editRecord(record._id)">
+                <template #icon><edit-outlined /></template>
+              </a-button>
+            </a-tooltip>
+            <a-tooltip title="分享">
+              <a-button type="link" size="small" @click="shareRecord(record._id)">
+                <template #icon><share-alt-outlined /></template>
+              </a-button>
+            </a-tooltip>
+            <a-dropdown :trigger="['click']">
+              <a-button type="link" size="small">
+                <template #icon><more-outlined /></template>
+              </a-button>
               <template #overlay>
                 <a-menu>
-                  <a-menu-item @click="viewVersions(record._id)">
+                  <a-menu-item key="versions" @click="viewVersions(record._id)">
                     <history-outlined /> 版本历史
                   </a-menu-item>
-                  <a-menu-item @click="deleteRecord(record._id)">
+                  <a-menu-item key="delete" @click="deleteRecord(record._id)">
                     <delete-outlined /> 删除
                   </a-menu-item>
                 </a-menu>
               </template>
-              <a-button type="link" size="small">
-                <template #icon><more-outlined /></template>
-                更多
-              </a-button>
             </a-dropdown>
           </a-space>
         </template>
@@ -294,7 +302,8 @@ import {
   FileOutlined,
   DownloadOutlined,
   StopOutlined,
-  CheckCircleOutlined
+  CheckCircleOutlined,
+  LockOutlined
 } from '@ant-design/icons-vue';
 import {
   getHealthRecords,
@@ -373,6 +382,12 @@ const columns = [
     title: '可见性',
     dataIndex: 'visibility',
     key: 'visibility',
+    width: 100
+  },
+  {
+    title: '加密状态',
+    dataIndex: 'is_encrypted',
+    key: 'encryption_status',
     width: 100
   },
   {
