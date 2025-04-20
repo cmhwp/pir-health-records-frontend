@@ -71,7 +71,7 @@
             </a-card>
           </div>
 
-          <div v-else-if="recordData.record_type === 'medication'">
+          <div v-else-if="recordData.record_type === 'PRESCRIPTION'">
             <a-card title="用药信息" style="margin-bottom: 16px">
               <a-descriptions bordered :column="1">
                 <a-descriptions-item v-if="recordData.data?.medication_name" label="药物名称">
@@ -103,6 +103,34 @@
                 <h4>总体印象:</h4>
                 <p>{{ recordData.data.impression }}</p>
               </div>
+            </a-card>
+          </div>
+
+          <!-- 生命体征数据 -->
+          <div v-else-if="recordData.record_type === 'VITAL_SIGN' || (recordData.vital_signs && recordData.vital_signs.length > 0)">
+            <a-card title="生命体征数据" style="margin-bottom: 16px">
+              <a-table
+                v-if="recordData.vital_signs && recordData.vital_signs.length > 0"
+                :dataSource="recordData.vital_signs"
+                :columns="vitalSignColumns"
+                :pagination="false"
+                bordered
+              >
+                <template #bodyCell="{ column, text, record: vitalSign }">
+                  <template v-if="column.dataIndex === 'type'">
+                    <a-tag :color="getVitalSignColor(vitalSign.type)">
+                      {{ getVitalSignTypeName(vitalSign.type) }}
+                    </a-tag>
+                  </template>
+                  <template v-else-if="column.dataIndex === 'measured_at'">
+                    {{ formatDate(vitalSign.measured_at) }}
+                  </template>
+                  <template v-else-if="column.dataIndex === 'value'">
+                    {{ vitalSign.value }} {{ vitalSign.unit }}
+                  </template>
+                </template>
+              </a-table>
+              <a-empty v-else description="无生命体征数据" />
             </a-card>
           </div>
 
@@ -230,6 +258,68 @@ const labResultColumns = [
     },
   },
 ];
+
+// 生命体征表格列定义
+const vitalSignColumns = [
+  {
+    title: '类型',
+    dataIndex: 'type',
+    key: 'type',
+    width: '25%'
+  },
+  {
+    title: '数值',
+    dataIndex: 'value',
+    key: 'value',
+    width: '25%'
+  },
+  {
+    title: '单位',
+    dataIndex: 'unit',
+    key: 'unit',
+    width: '15%'
+  },
+  {
+    title: '测量时间',
+    dataIndex: 'measured_at',
+    key: 'measured_at',
+    width: '35%'
+  }
+];
+
+// 获取生命体征类型名称
+const getVitalSignTypeName = (type: string): string => {
+  const typeMap: Record<string, string> = {
+    'BLOOD_PRESSURE': '血压',
+    'HEART_RATE': '心率',
+    'TEMPERATURE': '体温',
+    'BLOOD_OXYGEN': '血氧',
+    'BLOOD_GLUCOSE': '血糖',
+    'WEIGHT': '体重',
+    'HEIGHT': '身高',
+    'BMI': '体重指数',
+    'RESPIRATORY_RATE': '呼吸率',
+    'OTHER': '其他'
+  };
+  return typeMap[type] || type;
+};
+
+// 获取生命体征颜色
+const getVitalSignColor = (type: string): string => {
+  const colorMap: Record<string, string> = {
+    'BLOOD_PRESSURE': 'red',
+    'HEART_RATE': 'orange',
+    'TEMPERATURE': 'gold',
+    'BLOOD_OXYGEN': 'blue',
+    'BLOOD_GLUCOSE': 'purple',
+    'WEIGHT': 'cyan',
+    'HEIGHT': 'green',
+    'BMI': 'lime',
+    'RESPIRATORY_RATE': 'magenta',
+    'OTHER': 'default'
+  };
+  return colorMap[type] || 'default';
+};
 
 // 记录数据
 const initRecordData = () => {

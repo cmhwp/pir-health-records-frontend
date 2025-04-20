@@ -434,7 +434,15 @@ const fetchRecordDetail = async () => {
       
       // 转换标签为数组
       if (formState.tags) {
-        tags.value = formState.tags.split(',').filter(tag => tag.trim().length > 0);
+        if (typeof formState.tags === 'string') {
+          tags.value = formState.tags.split(',').filter(tag => tag.trim().length > 0);
+        } else if (Array.isArray(formState.tags)) {
+          tags.value = [...formState.tags];
+          formState.tags = tags.value.join(',');
+        } else {
+          tags.value = [];
+          formState.tags = '';
+        }
       }
       
       // 设置日期

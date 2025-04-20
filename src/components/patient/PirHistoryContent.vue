@@ -106,14 +106,6 @@
         </a-card>
       </a-col>
     </a-row>
-    
-    <a-row :gutter="16" style="margin-top: 16px">
-      <a-col :span="24">
-        <a-card title="月度查询趋势" :loading="loading">
-          <div ref="monthlyStatsChart" style="height: 300px"></div>
-        </a-card>
-      </a-col>
-    </a-row>
   </div>
 </template>
 
@@ -153,6 +145,7 @@ const router = useRouter();
 
 // 数据加载状态
 const loading = ref(true);
+const chartLoading = ref(false);
 
 // 查询历史
 const queryHistory = ref<QueryHistoryItem[]>([]);
@@ -221,7 +214,10 @@ const getQueryTypeName = (type: string): string => {
     'advanced_search': '高级搜索',
     'pir_query': 'PIR隐匿查询',
     'statistics': '统计数据查询',
-    'shared_records': '共享记录查询'
+    'shared_records': '共享记录查询',
+    'standard_query': '标准记录查询',
+    'standard_record_detail': '标准记录详情查询',
+    'version_history': '版本历史查询'
   };
   return typeMap[type] || type;
 };
@@ -229,12 +225,15 @@ const getQueryTypeName = (type: string): string => {
 // 获取查询类型颜色
 const getQueryTypeColor = (type: string): string => {
   const colorMap: Record<string, string> = {
-    'records': '#1890ff',
-    'record_detail': '#13c2c2',
-    'advanced_search': '#52c41a',
-    'pir_query': '#722ed1',
-    'statistics': '#fa8c16',
-    'shared_records': '#eb2f96'
+    'records': '#1890ff',             // 蓝色
+    'record_detail': '#13c2c2',       // 青色
+    'advanced_search': '#52c41a',     // 绿色
+    'pir_query': '#722ed1',           // 紫色
+    'statistics': '#fa8c16',          // 橙色
+    'shared_records': '#eb2f96',      // 粉色
+    'standard_query': '#2f54eb',      // 深蓝色
+    'standard_record_detail': '#faad14', // 黄色
+    'version_history': '#fa541c'      // 红橙色
   };
   return colorMap[type] || '#d9d9d9';
 };
@@ -283,12 +282,6 @@ const replayQuery = (record: QueryHistoryItem) => {
   }
 };
 
-// 筛选变更处理
-const handleFilterChange = () => {
-  pagination.current = 1;
-  fetchQueryHistory();
-};
-
 // 获取查询历史
 const fetchQueryHistory = async () => {
   loading.value = true;
@@ -311,6 +304,73 @@ const fetchQueryHistory = async () => {
   }
 };
 
+// 筛选变更处理
+const handleFilterChange = () => {
+  pagination.current = 1;
+  // 获取分页数据
+  fetchQueryHistory();
+  // 获取所有数据用于统计
+  fetchAllQueryHistoryForStats();
+};
+
+// 获取所有查询历史数据用于统计
+const fetchAllQueryHistoryForStats = async () => {
+  chartLoading.value = true;
+  try {
+    // 设置图表加载状态
+    if (queryTypesChart.value) {
+      const chart = echarts.getInstanceByDom(queryTypesChart.value);
+      if (chart) {
+        chart.showLoading({
+          text: '数据加载中...',
+          maskColor: 'rgba(255, 255, 255, 0.8)'
+        });
+      }
+    }
+    
+    // 获取所有历史记录，设置较大的pageSize来一次性获取所有数据
+    // 如果数据量非常大，可以考虑直接从后端获取统计数据
+    const response = await getPirHistory(
+      1,
+      1000, // 设置一个较大的值，确保能获取所有记录
+      filterType.value === 'pir'
+    );
+    
+    if (response.success && response.data) {
+      // 重置查询类型计数
+      statistics.query_types = {};
+      
+      // 统计每种查询类型的次数
+      response.data.history.forEach(record => {
+        const type = record.query_type;
+        if (!statistics.query_types[type]) {
+          statistics.query_types[type] = 0;
+        }
+        statistics.query_types[type] += 1;
+      });
+      
+      // 渲染查询类型图表
+      await nextTick();
+      renderQueryTypesChart();
+    }
+  } catch (error) {
+    console.error('获取所有查询历史数据失败:', error);
+    message.error('统计数据加载失败');
+  } finally {
+    // 隐藏加载状态
+    if (queryTypesChart.value) {
+      const chart = echarts.getInstanceByDom(queryTypesChart.value);
+      if (chart) {
+        chart.hideLoading();
+      }
+    }
+    chartLoading.value = false;
+  }
+};
+
+// 图表引用
+const queryTypesChart = ref<HTMLElement | null>(null);
+
 // 获取PIR统计数据
 const fetchPirStatistics = async () => {
   try {
@@ -318,10 +378,12 @@ const fetchPirStatistics = async () => {
     if (response.success && response.data) {
       Object.assign(statistics, response.data);
       
+      // 计算查询类型分布
+      calculateQueryTypeDistribution();
+      
       // 渲染图表
       await nextTick();
       renderQueryTypesChart();
-      renderMonthlyStatsChart();
     }
   } catch (error) {
     console.error('获取PIR统计数据失败:', error);
@@ -329,27 +391,35 @@ const fetchPirStatistics = async () => {
   }
 };
 
-// 处理表格变化
-const handleTableChange = (pag: TablePaginationConfig, filters: any, sorter: any) => {
-  pagination.current = pag.current || 1;
-  pagination.pageSize = pag.pageSize || 10;
+// 计算查询类型分布
+const calculateQueryTypeDistribution = () => {
+  // 重置查询类型计数
+  statistics.query_types = {};
   
-  // 重新获取数据
-  fetchQueryHistory();
+  // 统计每种查询类型的次数
+  queryHistory.value.forEach(record => {
+    const type = record.query_type;
+    if (!statistics.query_types[type]) {
+      statistics.query_types[type] = 0;
+    }
+    statistics.query_types[type] += 1;
+  });
 };
 
 // 渲染查询类型分布图
 const renderQueryTypesChart = () => {
-  const chartDom = document.getElementById('queryTypesChart');
-  if (!chartDom) return;
+  if (!queryTypesChart.value) return;
   
-  const chart = echarts.init(chartDom);
+  const chart = echarts.init(queryTypesChart.value);
   const queryTypes = statistics.query_types;
   
   // 准备数据
   const data = Object.entries(queryTypes).map(([key, value]) => ({
     name: getQueryTypeName(key),
-    value: value || 0
+    value: value || 0,
+    itemStyle: {
+      color: getQueryTypeColor(key)
+    }
   })).filter(item => item.value > 0);
   
   const option = {
@@ -360,14 +430,22 @@ const renderQueryTypesChart = () => {
     legend: {
       orient: 'vertical',
       right: 10,
-      top: 'center',
-      data: data.map(item => item.name)
+      top: 'middle',
+      data: data.map(item => item.name),
+      formatter: (name: string) => {
+        const item = data.find(d => d.name === name);
+        return item ? `${name}: ${item.value}` : name;
+      },
+      textStyle: {
+        fontSize: 12
+      }
     },
     series: [
       {
         name: '查询类型',
         type: 'pie',
-        radius: ['50%', '70%'],
+        radius: ['45%', '70%'],
+        center: ['40%', '55%'],
         avoidLabelOverlap: false,
         label: {
           show: false,
@@ -376,7 +454,7 @@ const renderQueryTypesChart = () => {
         emphasis: {
           label: {
             show: true,
-            fontSize: '18',
+            fontSize: 16,
             fontWeight: 'bold'
           }
         },
@@ -391,86 +469,13 @@ const renderQueryTypesChart = () => {
   chart.setOption(option);
 };
 
-// 渲染月度统计图表
-const renderMonthlyStatsChart = () => {
-  const chartDom = document.getElementById('monthlyStatsChart');
-  if (!chartDom) return;
+// 处理表格变化
+const handleTableChange = (pag: TablePaginationConfig, filters: any, sorter: any) => {
+  pagination.current = pag.current || 1;
+  pagination.pageSize = pag.pageSize || 10;
   
-  const chart = echarts.init(chartDom);
-  const monthlyStats = statistics.monthly_stats;
-  
-  // 准备X轴数据 - 最近6个月
-  const months = [];
-  const standardData = [];
-  const pirData = [];
-  
-  const now = dayjs();
-  for (let i = 5; i >= 0; i--) {
-    const month = now.subtract(i, 'month');
-    const monthStr = month.format('YYYY-MM');
-    months.push(monthStr);
-    
-    // 假设monthlyStats格式为 { "2023-01": 10, "2023-01-pir": 5, ... }
-    const total = monthlyStats[monthStr] || 0;
-    const pir = monthlyStats[`${monthStr}-pir`] || 0;
-    
-    pirData.push(pir);
-    standardData.push(total - pir);
-  }
-  
-  const option = {
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: {
-        type: 'shadow'
-      }
-    },
-    legend: {
-      data: ['标准查询', 'PIR查询']
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      containLabel: true
-    },
-    xAxis: [
-      {
-        type: 'category',
-        data: months
-      }
-    ],
-    yAxis: [
-      {
-        type: 'value'
-      }
-    ],
-    series: [
-      {
-        name: '标准查询',
-        type: 'bar',
-        stack: 'total',
-        emphasis: {
-          focus: 'series'
-        },
-        data: standardData
-      },
-      {
-        name: 'PIR查询',
-        type: 'bar',
-        stack: 'total',
-        emphasis: {
-          focus: 'series'
-        },
-        data: pirData,
-        itemStyle: {
-          color: '#1890ff'
-        }
-      }
-    ]
-  };
-  
-  chart.setOption(option);
+  // 重新获取数据
+  fetchQueryHistory();
 };
 
 // 初始化
@@ -478,24 +483,18 @@ onMounted(async () => {
   // 并行加载数据
   await Promise.all([
     fetchQueryHistory(),
-    fetchPirStatistics()
+    fetchPirStatistics(),
+    fetchAllQueryHistoryForStats()
   ]);
   
   // 监听窗口大小变化，调整图表尺寸
   window.addEventListener('resize', function() {
-    const chartElements = [
-      document.getElementById('queryTypesChart'),
-      document.getElementById('monthlyStatsChart')
-    ];
-    
-    chartElements.forEach(element => {
-      if (element) {
-        const chart = echarts.getInstanceByDom(element);
-        if (chart) {
-          chart.resize();
-        }
+    if (queryTypesChart.value) {
+      const chart = echarts.getInstanceByDom(queryTypesChart.value);
+      if (chart) {
+        chart.resize();
       }
-    });
+    }
   });
 });
 </script>

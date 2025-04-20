@@ -58,15 +58,6 @@
                 <a-tag :color="record.is_encrypted ? 'purple' : 'green'">
                   {{ record.is_encrypted ? '已加密' : '未加密' }}
                 </a-tag>
-                <a-button 
-                  v-if="record.is_encrypted" 
-                  type="link" 
-                  size="small" 
-                  @click="showDecryptModal"
-                >
-                  <template #icon><UnlockOutlined /></template>
-                  解密查看
-                </a-button>
               </a-descriptions-item>
               <a-descriptions-item label="标签" :span="1">
                 <a-tag v-for="tag in recordTags" :key="tag" color="blue">{{ tag }}</a-tag>
@@ -75,16 +66,6 @@
             </a-descriptions>
 
             <a-divider />
-
-            <!-- 加密记录提示 -->
-            <a-alert
-              v-if="record.is_encrypted"
-              message="加密记录"
-              description="此记录已加密，需要输入正确的密钥才能查看完整内容。"
-              type="warning"
-              showIcon
-              style="margin-bottom: 16px"
-            />
 
             <div v-if="record.description">
               <h3>记录描述</h3>
@@ -114,6 +95,32 @@
                   {{ record.medication.side_effects }}
                 </a-descriptions-item>
               </a-descriptions>
+            </div>
+
+            <!-- 生命体征特定字段 -->
+            <div v-if="record.vital_signs && record.vital_signs.length > 0" style="margin-top: 20px">
+              <h3>生命体征数据</h3>
+              <a-table
+                :dataSource="record.vital_signs"
+                :columns="vitalSignColumns"
+                :pagination="{ pageSize: 5 }"
+                size="middle"
+                bordered
+              >
+                <template #bodyCell="{ column, text, record: vitalSign }">
+                  <template v-if="column.dataIndex === 'type'">
+                    <a-tag :color="getVitalSignColor(vitalSign.type)">
+                      {{ getVitalSignTypeName(vitalSign.type) }}
+                    </a-tag>
+                  </template>
+                  <template v-else-if="column.dataIndex === 'measured_at'">
+                    {{ formatDate(vitalSign.measured_at) }}
+                  </template>
+                  <template v-else-if="column.dataIndex === 'value'">
+                    {{ vitalSign.value }} {{ vitalSign.unit }}
+                  </template>
+                </template>
+              </a-table>
             </div>
 
             <!-- 相关文件列表 -->
@@ -297,26 +304,6 @@
       <p>撤销后，对方将无法再访问该记录。</p>
     </a-modal>
 
-    <!-- 解密记录模态框 -->
-    <a-modal
-      v-model:visible="decryptModalVisible"
-      title="解密记录"
-      @ok="decryptRecord"
-      :confirm-loading="decrypting"
-      okText="解密"
-      cancelText="取消"
-    >
-      <p>此记录已加密，请输入解密密钥以查看完整内容。</p>
-      <a-form-item label="解密密钥" required>
-        <a-input-password
-          v-model:value="decryptKey"
-          placeholder="请输入解密密钥"
-          :maxLength="32"
-        />
-      </a-form-item>
-      <p style="color: #ff4d4f; font-size: 12px;">注意：密钥错误会导致解密失败，无法查看记录内容。</p>
-    </a-modal>
-
     <!-- 版本查看模态框 -->
     <a-modal
       v-model:visible="versionModalVisible"
@@ -396,6 +383,32 @@
                 {{ versionRecord.medication.side_effects }}
               </a-descriptions-item>
             </a-descriptions>
+          </div>
+
+          <!-- 生命体征特定字段 -->
+          <div v-if="versionRecord.vital_signs && versionRecord.vital_signs.length > 0" style="margin-top: 20px">
+            <h3>生命体征数据</h3>
+            <a-table
+              :dataSource="versionRecord.vital_signs"
+              :columns="vitalSignColumns"
+              :pagination="{ pageSize: 5 }"
+              size="middle"
+              bordered
+            >
+              <template #bodyCell="{ column, text, record: vitalSign }">
+                <template v-if="column.dataIndex === 'type'">
+                  <a-tag :color="getVitalSignColor(vitalSign.type)">
+                    {{ getVitalSignTypeName(vitalSign.type) }}
+                  </a-tag>
+                </template>
+                <template v-else-if="column.dataIndex === 'measured_at'">
+                  {{ formatDate(vitalSign.measured_at) }}
+                </template>
+                <template v-else-if="column.dataIndex === 'value'">
+                  {{ vitalSign.value }} {{ vitalSign.unit }}
+                </template>
+              </template>
+            </a-table>
           </div>
 
           <!-- 相关文件列表 -->
@@ -537,8 +550,7 @@ import {
   getRecordsSharedByMe,
   shareHealthRecord,
   revokeSharedRecord,
-  getShareableUsers,
-  decryptHealthRecord
+  getShareableUsers
 } from '@/api/health';
 
 import {
@@ -573,7 +585,15 @@ const sqlId = ref<number | null>(null);
 // 记录标签
 const recordTags = computed(() => {
   if (!record.value?.tags) return [];
-  return record.value.tags.split(',').filter(tag => tag.trim().length > 0);
+  
+  // 确保tags是字符串类型
+  const tagsValue = record.value.tags;
+  if (typeof tagsValue !== 'string') {
+    console.warn('Record tags is not a string:', tagsValue);
+    return [];
+  }
+  
+  return tagsValue.split(',').filter(tag => tag && tag.trim().length > 0);
 });
 
 // 版本历史
@@ -601,11 +621,6 @@ const shareForm = reactive({
 const revokeModalVisible = ref(false);
 const revoking = ref(false);
 const shareIdToRevoke = ref<string>('');
-
-// 解密相关
-const decryptModalVisible = ref(false);
-const decrypting = ref(false);
-const decryptKey = ref('');
 
 // 版本查看相关变量
 const versionModalVisible = ref(false);
@@ -777,7 +792,7 @@ const fetchSharedRecords = async () => {
 };
 
 // 处理有效期类型变更
-const handleValidityChange = (e: any) => {
+const handleValidityChange = (e: { target: { value: string } }) => {
   shareForm.validity_type = e.target.value;
 };
 
@@ -963,45 +978,6 @@ onMounted(() => {
   fetchRecordDetail();
 });
 
-// 显示解密模态框
-const showDecryptModal = () => {
-  decryptModalVisible.value = true;
-};
-
-// 解密记录
-const decryptRecord = async () => {
-  if (!recordId.value || !decryptKey.value) {
-    message.warning('请输入解密密钥');
-    return;
-  }
-  
-  decrypting.value = true;
-  try {
-    const response = await decryptHealthRecord(recordId.value, decryptKey.value);
-    
-    if (response.success) {
-      message.success('记录已成功解密');
-      // 更新记录数据
-      if (response.data && response.data.record) {
-        record.value = response.data.record;
-      } else {
-        // 如果返回的record不完整，则重新获取记录
-        await fetchRecordDetail();
-      }
-      // 关闭模态框并清除密钥
-      decryptModalVisible.value = false;
-      decryptKey.value = '';
-    } else {
-      message.error(response.message || '解密失败');
-    }
-  } catch (error) {
-    console.error('解密失败:', error);
-    message.error('解密失败');
-  } finally {
-    decrypting.value = false;
-  }
-};
-
 // 版本比较
 const compareVersions = async (baseVersion: number, compareVersion: number) => {
   compareModalVisible.value = true;
@@ -1025,6 +1001,69 @@ const compareVersions = async (baseVersion: number, compareVersion: number) => {
   } finally {
     comparing.value = false;
   }
+};
+
+// 生命体征相关
+// 表格列定义
+const vitalSignColumns = [
+  {
+    title: '类型',
+    dataIndex: 'type',
+    key: 'type',
+    width: '25%'
+  },
+  {
+    title: '数值',
+    dataIndex: 'value',
+    key: 'value',
+    width: '25%'
+  },
+  {
+    title: '测量时间',
+    dataIndex: 'measured_at',
+    key: 'measured_at',
+    width: '30%'
+  },
+  {
+    title: '备注',
+    dataIndex: 'notes',
+    key: 'notes',
+    width: '20%'
+  }
+];
+
+// 获取生命体征类型名称
+const getVitalSignTypeName = (type: string): string => {
+  const typeMap: Record<string, string> = {
+    'BLOOD_PRESSURE': '血压',
+    'HEART_RATE': '心率',
+    'TEMPERATURE': '体温',
+    'BLOOD_OXYGEN': '血氧',
+    'BLOOD_GLUCOSE': '血糖',
+    'WEIGHT': '体重',
+    'HEIGHT': '身高',
+    'BMI': '体重指数',
+    'RESPIRATORY_RATE': '呼吸率',
+    'OTHER': '其他'
+  };
+  return typeMap[type] || '未知类型';
+};
+
+// 获取生命体征颜色
+const getVitalSignColor = (type: string): string => {
+  const colorMap: Record<string, string> = {
+    'BLOOD_PRESSURE': 'red',
+    'HEART_RATE': 'orange',
+    'TEMPERATURE': 'gold',
+    'BLOOD_OXYGEN': 'blue',
+    'BLOOD_GLUCOSE': 'purple',
+    'WEIGHT': 'cyan',
+    'HEIGHT': 'green',
+    'BMI': 'lime',
+    'RESPIRATORY_RATE': 'magenta',
+    'OTHER': 'default'
+  };
+  return colorMap[type] || 'default';
 };
 </script>
 

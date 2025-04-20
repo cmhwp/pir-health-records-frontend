@@ -209,6 +209,111 @@
               />
             </a-form-item>
           </a-card>
+          
+          <!-- 生命体征记录特定字段 -->
+          <a-card v-if="formState.record_data.record_type === 'VITAL_SIGN'" title="生命体征数据" style="margin-top: 16px">
+            <!-- 生命体征列表 -->
+            <div v-for="(item, index) in vitalSigns" :key="index" class="vital-sign-item" style="margin-bottom: 16px; padding: 16px; border: 1px solid #f0f0f0; border-radius: 4px;">
+              <a-row :gutter="16" align="middle">
+                <a-col :span="22">
+                  <a-row :gutter="16">
+                    <a-col :span="8">
+                      <a-form-item :label="`类型`" style="margin-bottom: 8px;">
+                        <a-select 
+                          v-model:value="item.type" 
+                          style="width: 100%"
+                          placeholder="选择类型"
+                        >
+                          <a-select-option value="BLOOD_PRESSURE">
+                            <a-tag :color="getVitalSignColor('BLOOD_PRESSURE')">{{ getVitalSignTypeName('BLOOD_PRESSURE') }}</a-tag>
+                          </a-select-option>
+                          <a-select-option value="HEART_RATE">
+                            <a-tag :color="getVitalSignColor('HEART_RATE')">{{ getVitalSignTypeName('HEART_RATE') }}</a-tag>
+                          </a-select-option>
+                          <a-select-option value="TEMPERATURE">
+                            <a-tag :color="getVitalSignColor('TEMPERATURE')">{{ getVitalSignTypeName('TEMPERATURE') }}</a-tag>
+                          </a-select-option>
+                          <a-select-option value="BLOOD_OXYGEN">
+                            <a-tag :color="getVitalSignColor('BLOOD_OXYGEN')">{{ getVitalSignTypeName('BLOOD_OXYGEN') }}</a-tag>
+                          </a-select-option>
+                          <a-select-option value="BLOOD_GLUCOSE">
+                            <a-tag :color="getVitalSignColor('BLOOD_GLUCOSE')">{{ getVitalSignTypeName('BLOOD_GLUCOSE') }}</a-tag>
+                          </a-select-option>
+                          <a-select-option value="WEIGHT">
+                            <a-tag :color="getVitalSignColor('WEIGHT')">{{ getVitalSignTypeName('WEIGHT') }}</a-tag>
+                          </a-select-option>
+                          <a-select-option value="HEIGHT">
+                            <a-tag :color="getVitalSignColor('HEIGHT')">{{ getVitalSignTypeName('HEIGHT') }}</a-tag>
+                          </a-select-option>
+                          <a-select-option value="BMI">
+                            <a-tag :color="getVitalSignColor('BMI')">{{ getVitalSignTypeName('BMI') }}</a-tag>
+                          </a-select-option>
+                          <a-select-option value="RESPIRATORY_RATE">
+                            <a-tag :color="getVitalSignColor('RESPIRATORY_RATE')">{{ getVitalSignTypeName('RESPIRATORY_RATE') }}</a-tag>
+                          </a-select-option>
+                          <a-select-option value="OTHER">
+                            <a-tag :color="getVitalSignColor('OTHER')">{{ getVitalSignTypeName('OTHER') }}</a-tag>
+                          </a-select-option>
+                        </a-select>
+                      </a-form-item>
+                    </a-col>
+                    <a-col :span="6">
+                      <a-form-item label="数值" style="margin-bottom: 8px;">
+                        <a-input-number 
+                          v-model:value="item.value"
+                          style="width: 100%"
+                          placeholder="数值"
+                          :precision="2"
+                        />
+                      </a-form-item>
+                    </a-col>
+                    <a-col :span="5">
+                      <a-form-item label="单位" style="margin-bottom: 8px;">
+                        <a-input 
+                          v-model:value="item.unit" 
+                          placeholder="单位"
+                        />
+                      </a-form-item>
+                    </a-col>
+                    <a-col :span="5">
+                      <a-form-item label="测量时间" style="margin-bottom: 8px;">
+                        <a-date-picker 
+                          v-model:value="item.measuredAtDate"
+                          style="width: 100%"
+                          :disabledDate="disabledDate"
+                          @change="(date:Dayjs | null) => handleVitalSignDateChange(index, date)"
+                          showTime
+                        />
+                      </a-form-item>
+                    </a-col>
+                  </a-row>
+                  <a-row>
+                    <a-col :span="24">
+                      <a-form-item label="备注" style="margin-bottom: 0;">
+                        <a-input 
+                          v-model:value="item.notes" 
+                          placeholder="备注信息"
+                        />
+                      </a-form-item>
+                    </a-col>
+                  </a-row>
+                </a-col>
+                <a-col :span="2" style="text-align: right">
+                  <a-button 
+                    type="text" 
+                    danger 
+                    @click="removeVitalSign(index)"
+                  >
+                    <template #icon><delete-outlined /></template>
+                  </a-button>
+                </a-col>
+              </a-row>
+            </div>
+
+            <a-button type="dashed" block @click="addVitalSign" style="margin-bottom: 16px;">
+              <plus-outlined /> 添加生命体征数据
+            </a-button>
+          </a-card>
         </a-col>
         
         <a-col :span="8">
@@ -266,6 +371,22 @@
               <div style="margin-top: 8px; color: rgba(0, 0, 0, 0.45); font-size: 14px">
                 启用PIR技术保护您的健康记录，提高数据隐私安全性
               </div>
+              <a-alert
+                v-if="pirProtected"
+                style="margin-top: 8px"
+                type="success"
+                message="已启用PIR隐私保护，您的查询将被混淆以保护隐私"
+                description="启用PIR保护后，该记录在匿名查询时将被包含，系统会添加噪声查询来混淆您的真实意图，防止第三方推断您的查询模式"
+                show-icon
+              />
+              <a-alert
+                v-else
+                style="margin-top: 8px"
+                type="warning"
+                message="未启用PIR隐私保护，记录在匿名查询时将被排除"
+                description="不启用PIR保护的记录在执行匿名查询时将不被包含，这可能会导致查询结果不完整"
+                show-icon
+              />
             </a-form-item>
             
             <!-- 加密选项 -->
@@ -317,16 +438,37 @@ import { useRouter } from 'vue-router';
 import { message } from 'ant-design-vue';
 import type { FormInstance } from 'ant-design-vue';
 import dayjs from 'dayjs';
+import type { Dayjs } from 'dayjs';
 import { 
   UploadOutlined,
   FileOutlined,
-  DeleteOutlined
+  DeleteOutlined,
+  PlusOutlined
 } from '@ant-design/icons-vue';
 import { createHealthRecord } from '@/api/health';
 import { getInstitutions,getDoctors } from '@/api/patient';
 import { RecordVisibility, type CreateRecordRequest, type MedicationInfo, type InstitutionInfo } from '@/types/health';
 import { useRecordTypes } from '@/hooks/useRecordTypes';
 import type { Doctor } from '@/types/patient';
+
+// 定义生命体征信息接口
+interface VitalSignInfo {
+  type: string;
+  value: number;
+  unit: string;
+  measured_at: string;
+  notes?: string;
+}
+
+// 生命体征表单项接口
+interface VitalSignFormItem {
+  type: string;
+  value: number;
+  unit: string;
+  measuredAtDate: dayjs.Dayjs | null;
+  measured_at: string;
+  notes: string;
+}
 
 // Define an extended version of record data with required medication
 interface ExtendedRecordData {
@@ -340,6 +482,7 @@ interface ExtendedRecordData {
   visibility: RecordVisibility;
   tags: string;
   medication: MedicationInfo; // Required, not optional
+  vital_signs?: VitalSignInfo[]; // 添加生命体征数组
 }
 
 // Define our own extended request type
@@ -358,6 +501,69 @@ const encryptionKey = ref('');
 
 // 使用记录类型hook
 const { recordTypeOptions, isLoading: loadingRecordTypes } = useRecordTypes();
+
+// 生命体征表单数据
+const vitalSigns = ref<VitalSignFormItem[]>([]);
+
+// 添加生命体征
+const addVitalSign = () => {
+  vitalSigns.value.push({
+    type: '',
+    value: 0,
+    unit: '',
+    measuredAtDate: dayjs(),
+    measured_at: dayjs().format('YYYY-MM-DDTHH:mm:ss.SSS'),
+    notes: ''
+  });
+};
+
+// 移除生命体征
+const removeVitalSign = (index: number) => {
+  vitalSigns.value.splice(index, 1);
+};
+
+// 处理生命体征测量日期变化
+const handleVitalSignDateChange = (index: number, date: Dayjs | null) => {
+  if (date) {
+    vitalSigns.value[index].measured_at = date.format('YYYY-MM-DDTHH:mm:ss.SSS');
+  } else {
+    vitalSigns.value[index].measured_at = '';
+  }
+};
+
+// 获取生命体征类型名称
+const getVitalSignTypeName = (type: string): string => {
+  const typeMap: Record<string, string> = {
+    'BLOOD_PRESSURE': '血压',
+    'HEART_RATE': '心率',
+    'TEMPERATURE': '体温',
+    'BLOOD_OXYGEN': '血氧',
+    'BLOOD_GLUCOSE': '血糖',
+    'WEIGHT': '体重',
+    'HEIGHT': '身高',
+    'BMI': '体重指数',
+    'RESPIRATORY_RATE': '呼吸率',
+    'OTHER': '其他'
+  };
+  return typeMap[type] || type;
+};
+
+// 获取生命体征颜色
+const getVitalSignColor = (type: string): string => {
+  const colorMap: Record<string, string> = {
+    'BLOOD_PRESSURE': 'red',
+    'HEART_RATE': 'orange',
+    'TEMPERATURE': 'gold',
+    'BLOOD_OXYGEN': 'blue',
+    'BLOOD_GLUCOSE': 'purple',
+    'WEIGHT': 'cyan',
+    'HEIGHT': 'green',
+    'BMI': 'lime',
+    'RESPIRATORY_RATE': 'magenta',
+    'OTHER': 'default'
+  };
+  return colorMap[type] || 'default';
+};
 
 // 表单状态
 const formState = reactive<ExtendedCreateRecordRequest>({
@@ -378,7 +584,8 @@ const formState = reactive<ExtendedCreateRecordRequest>({
       end_date: '',
       instructions: '',
       side_effects: ''
-    }
+    },
+    vital_signs: []
   },
   files: [],
   file_description: ''
@@ -391,8 +598,6 @@ watch(() => recordTypeOptions.value, (newOptions) => {
   }
 }, { immediate: true });
 
-// 表单验证规则
-const rules = {};
 
 // 文件列表
 const fileList = ref<any[]>([]);
@@ -448,7 +653,7 @@ const handleMedicationEndDateChange = (value: dayjs.Dayjs | null) => {
 // 处理记录类型变化
 const handleRecordTypeChange = (value: string) => {
   // 不需要检查medication是否存在，因为在formState初始化时已经创建
-  if (value === 'medication') { // 使用字符串值比较
+  if (value === 'PRESCRIPTION') { // 使用字符串值比较
     // 可以重置medication字段为默认值
     formState.record_data.medication = {
       medication_name: '',
@@ -459,6 +664,11 @@ const handleRecordTypeChange = (value: string) => {
       instructions: '',
       side_effects: ''
     };
+  } else if (value === 'VITAL_SIGN') {
+    // 初始化生命体征数据
+    if (vitalSigns.value.length === 0) {
+      addVitalSign();
+    }
   }
 };
 
@@ -523,6 +733,17 @@ const handleSubmit = async () => {
     // 准备文件
     formState.files = fileList.value.map(file => file.originFileObj);
     
+    // 处理生命体征数据
+    if (formState.record_data.record_type === 'VITAL_SIGN' && vitalSigns.value.length > 0) {
+      formState.record_data.vital_signs = vitalSigns.value.filter(vs => vs.type && vs.value).map(vs => ({
+        type: vs.type,
+        value: vs.value,
+        unit: vs.unit,
+        measured_at: vs.measured_at,
+        notes: vs.notes
+      }));
+    }
+    
     // 将扩展类型转换为API期望的类型
     const apiRequest: CreateRecordRequest = {
       record_data: formState.record_data,
@@ -534,6 +755,9 @@ const handleSubmit = async () => {
     if (enableEncryption.value && encryptionKey.value) {
       apiRequest.encryption_key = encryptionKey.value;
     }
+    
+    // 添加PIR保护标志
+    apiRequest.pir_protected = pirProtected.value;
     
     // 提交请求
     const response = await createHealthRecord(apiRequest);

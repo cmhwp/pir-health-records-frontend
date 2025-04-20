@@ -229,7 +229,7 @@ import {
   FileOutlined,
   DownloadOutlined
 } from '@ant-design/icons-vue';
-import { pirQueryHealthRecords, getHealthRecord, getRecordFileUrl, getRecordTypes } from '@/api/health';
+import { pirQueryHealthRecords, getHealthRecord, getRecordFileUrl } from '@/api/health';
 import { type HealthRecord, type PIRQueryRequest } from '@/types/health';
 import type { TablePaginationConfig } from 'ant-design-vue';
 import { useRecordTypes } from '@/hooks/useRecordTypes';

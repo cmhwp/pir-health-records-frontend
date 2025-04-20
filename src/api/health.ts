@@ -17,6 +17,7 @@ import type {
   HealthRecord,
   HealthStatisticsResponse,
   ImportRecordsResponse,
+  ImportTemplateResponse,
   PIRQueryRequest,
   PIRQueryResponse,
   PIRSettingsResponse,
@@ -34,7 +35,8 @@ import type {
   ShareableUsersResponse,
   ShareableUserDetail,
   RecordTypesResponse,
-  InstitutionsResponse
+  InstitutionsResponse,
+  MonthlyRecordStatsResponse
 } from '../types/health';
 
 const API_PATH = '/health';
@@ -306,11 +308,34 @@ export const importHealthRecords = async (
   const formData = new FormData();
   formData.append('file', file);
   
+  // 添加处理选项，指定返回记录使用字符串形式的tags
+  formData.append('process_options', JSON.stringify({
+    convert_tags_to_string: true
+  }));
+  
   return request.post(`${API_PATH}/import`, formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     }
   });
+};
+
+/**
+ * 获取健康记录导入模板
+ */
+export const getImportTemplate = async (
+  format: 'excel' = 'excel'
+): Promise<ApiResponse<ImportTemplateResponse>> => {
+  return request.get(`${API_PATH}/import/template`, { 
+    params: { format } 
+  });
+};
+
+/**
+ * 获取导入模板下载链接
+ */
+export const getImportTemplateUrl = (filename: string, token: string): string => {
+  return `${request.defaults.baseURL}${API_PATH}/import/template/download/${filename}?token=${token}`;
 };
 
 /**
@@ -382,6 +407,18 @@ export const batchUpdateVisibility = async (
 };
 
 /**
+ * 批量更新PIR保护状态
+ */
+export const batchUpdatePirProtection = async (
+  data: {
+    record_ids: string[];
+    pir_protected: boolean;
+  }
+): Promise<ApiResponse<any>> => {
+  return request.post(`${API_PATH}/records/batch/pir-protection`, data);
+};
+
+/**
  * 获取可共享的用户列表
  */
 export const getShareableUsers = async (
@@ -430,6 +467,7 @@ export const accessSharedRecordByKey = async (
 ): Promise<ApiResponse<ViewSharedRecordResponse>> => {
   return request.get(`${API_PATH}/shared/access/${accessKey}`);
 };
+
 /**
  * 获取医疗机构列表
  */
@@ -444,7 +482,34 @@ export const decryptHealthRecord = async (
   recordId: string,
   encryptionKey: string
 ): Promise<ApiResponse<{ record: HealthRecord }>> => {
-  return request.post(`${API_PATH}/records/${recordId}/decrypt`, {
-    encryption_key: encryptionKey
-  });
+  return request.post(`${API_PATH}/records/${recordId}/decrypt`, { encryption_key: encryptionKey });
+};
+
+/**
+ * 获取月度记录统计
+ * @param month 月份 (可选，默认为当前月)，格式：YYYY-MM
+ * @param recordType 记录类型 (可选)
+ */
+export const getMonthlyRecordStats = async (
+  month?: string,
+  recordType?: string
+): Promise<ApiResponse<MonthlyRecordStatsResponse>> => {
+  const params: any = {};
+  
+  if (month) {
+    params.month = month;
+  }
+  
+  if (recordType) {
+    params.record_type = recordType;
+  }
+  
+  return request.get(`${API_PATH}/statistics/monthly`, { params });
+};
+
+/**
+ * 更新所有记录添加PIR保护字段
+ */
+export const updateAllRecordsPirProtectionField = async (): Promise<ApiResponse<any>> => {
+  return request.post(`${API_PATH}/admin/update-pir-protection-field`);
 }; 

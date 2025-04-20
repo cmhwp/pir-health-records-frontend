@@ -42,11 +42,7 @@
         <a-menu-item key="pir-query">
           <safety-outlined />
           <span>隐私查询</span>
-        </a-menu-item>
-        <a-menu-item key="statistics">
-          <bar-chart-outlined />
-          <span>健康统计</span>
-        </a-menu-item>
+        </a-menu-item>    
         <a-sub-menu key="privacy-tools">
           <template #title>
             <span>
@@ -260,8 +256,6 @@ const currentPageTitle = computed(() => {
     return '共享记录';
   } else if (path.includes('/patient/pir-query')) {
     return '隐私查询';
-  } else if (path.includes('/patient/statistics')) {
-    return '健康统计';
   } else if (path.includes('/patient/pir-settings')) {
     return '隐私设置';
   } else if (path.includes('/patient/pir-history')) {
@@ -298,9 +292,6 @@ const handleMenuSelect = ({ key }: { key: string }) => {
       break;
     case 'pir-query':
       router.push('/patient/pir-query');
-      break;
-    case 'statistics':
-      router.push('/patient/statistics');
       break;
     case 'pir-settings':
       router.push('/patient/pir-settings');
@@ -416,8 +407,6 @@ const setInitialSelectedKey = () => {
     selectedKeys.value = ['shared'];
   } else if (path.includes('/patient/pir-query')) {
     selectedKeys.value = ['pir-query'];
-  } else if (path.includes('/patient/statistics')) {
-    selectedKeys.value = ['statistics'];
   } else if (path.includes('/patient/pir-settings')) {
     selectedKeys.value = ['pir-settings'];
   } else if (path.includes('/patient/pir-history')) {

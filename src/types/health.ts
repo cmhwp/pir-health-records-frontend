@@ -82,6 +82,7 @@ export interface HealthRecord {
   requires_decryption?: boolean;
   encryption_date?: string;
   integrity_hash?: string;
+  pir_protected?: boolean;
 }
 
 // Request/Response interfaces
@@ -104,6 +105,7 @@ export interface CreateRecordRequest {
   files?: File[];
   file_description?: string;
   encryption_key?: string;
+  pir_protected?: boolean;
 }
 
 export interface CreateRecordResponse {
@@ -292,6 +294,12 @@ export interface ImportRecordsResponse {
     record_type: string;
   }[];
   count: number;
+}
+
+export interface ImportTemplateResponse {
+  filename: string;
+  format: string; 
+  download_url: string;
 }
 
 export interface BatchUploadRecordsRequest {
@@ -538,4 +546,18 @@ export interface InstitutionInfo {
 
 export interface InstitutionsResponse {
   institutions: InstitutionInfo[];
+}
+
+// 月度记录统计响应
+export interface MonthlyRecordStatsResponse {
+  // 当月新增记录数
+  current_month_count: number;
+  // 按月统计数据，格式为 yyyy-MM: count
+  monthly_counts: Record<string, number>;
+  // 按记录类型统计当月数据
+  type_counts: Record<string, number>;
+  // 同比上月增长率
+  month_over_month_growth: number; 
+  // 同比去年增长率（可选）
+  year_over_year_growth?: number;
 }

@@ -146,15 +146,12 @@
                     <template #title>{{ record.title }}</template>
                     <template #description>
                       <a-space>
-                        <a-tag>{{ getRecordTypeName(record.record_type) }}</a-tag>
+                        <a-tag :color="getRecordTypeColor(record.record_type)">{{ getRecordTypeName(record.record_type) }}</a-tag>
                         <a-tag color="blue">{{ getPermissionName(record.permission) }}</a-tag>
                         <span v-if="record.created_at">共享于: {{ formatDate(record.created_at) }}</span>
                       </a-space>
                     </template>
                   </a-list-item-meta>
-                  <template #actions>
-                    <a @click="viewRecord(record.record_id)">查看</a>
-                  </template>
                 </a-list-item>
                 <a-empty v-if="selectedUser.shared_records.length === 0" description="暂无共享记录" />
               </a-list>
@@ -195,7 +192,14 @@
               show-search
               :options="recordOptions"
               :filter-option="filterRecordOption"
-            ></a-select>
+            >
+              <template #option="{ value, label, color }">
+                <span>
+                  <a-tag :color="color" style="margin-right: 5px"></a-tag>
+                  {{ label }}
+                </span>
+              </template>
+            </a-select>
           </a-form-item>
           
           <a-form-item
@@ -239,9 +243,9 @@ import {
 } from '@ant-design/icons-vue';
 import { getShareableUsers, getShareableUserDetail, shareHealthRecord, getHealthRecords } from '@/api/health';
 import type { ShareableUser, ShareableUserDetail, ShareRecordRequest, SharePermission } from '@/types/health';
-
+import { useRecordTypes } from '@/hooks/useRecordTypes';
 const router = useRouter();
-
+const { getRecordTypeColor, getRecordTypeName } = useRecordTypes();
 // 页面状态
 const loading = ref(false);
 const detailLoading = ref(false);
@@ -337,7 +341,8 @@ const fetchRecords = async () => {
     if (response.success && response.data) {
       recordOptions.value = response.data.records.map(record => ({
         value: record._id,
-        label: `${record.title} (${getRecordTypeName(record.record_type)})`
+        label: `${record.title} (${getRecordTypeName(record.record_type)})`,
+        color: getRecordTypeColor(record.record_type)
       }));
     } else {
       message.error(response.message || '获取健康记录失败');
@@ -449,22 +454,6 @@ const getAvatarColor = (role: string): string => {
   return colorMap[role] || '#1890ff';
 };
 
-// 获取记录类型名称
-const getRecordTypeName = (type: string): string => {
-  const typeMap: Record<string, string> = {
-    general: '常规检查',
-    laboratory: '实验室检查',
-    medication: '用药记录',
-    imaging: '影像检查',
-    vital_signs: '生命体征',
-    surgery: '手术记录',
-    vaccination: '疫苗接种',
-    allergy: '过敏记录',
-    diagnosis: '诊断结果',
-    other: '其他记录'
-  };
-  return typeMap[type] || '未知类型';
-};
 
 // 获取权限名称
 const getPermissionName = (permission: string): string => {

@@ -290,9 +290,12 @@
 import { ref, reactive, onMounted, watch } from 'vue';
 import { message } from 'ant-design-vue';
 import dayjs from 'dayjs';
+import { useRoute } from 'vue-router';
 import { getPatientPrescriptions, getDoctors, requestPrescription } from '@/api/patient';
 import type { PrescriptionInfo, PrescriptionStatus, Doctor, RequestPrescriptionRequest, RequestPrescriptionMedication } from '@/types/patient';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons-vue';
+
+const route = useRoute();
 
 // 状态变量
 const loading = ref(false);
@@ -474,6 +477,14 @@ watch(activeTabKey, (newValue) => {
 // 组件挂载时加载数据
 onMounted(() => {
   fetchPrescriptions();
+  
+  // 检查URL参数是否有action=request
+  if (route.query.action === 'request') {
+    // 延迟一点打开窗口，确保组件已完全加载
+    setTimeout(() => {
+      showRequestPrescriptionModal();
+    }, 100);
+  }
 });
 
 // 申请处方相关状态
@@ -524,6 +535,23 @@ const removeMedication = (index: number) => {
 // 显示申请处方模态框
 const showRequestPrescriptionModal = async () => {
   initRequestForm();
+  
+  // 尝试从sessionStorage获取选中的医生信息
+  const selectedDoctorData = sessionStorage.getItem('selectedDoctor');
+  if (selectedDoctorData) {
+    try {
+      const selectedDoctor = JSON.parse(selectedDoctorData);
+      
+      // 自动设置医生ID
+      requestForm.doctor_id = selectedDoctor.id;
+      
+      // 清除sessionStorage中的数据，防止下次打开时还使用相同的医生
+      sessionStorage.removeItem('selectedDoctor');
+    } catch (error) {
+      console.error('解析选中医生数据失败:', error);
+    }
+  }
+  
   requestModalVisible.value = true;
   
   // 加载医生列表

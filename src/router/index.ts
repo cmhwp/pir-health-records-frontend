@@ -58,6 +58,12 @@ const routes: Array<RouteRecordRaw> = [
         meta: { requiresAuth: true, role: 'patient', title: '记录详情' }
       },
       {
+        path:'share-users',
+        name:'ShareUsers',
+        component:()=>import('@/components/patient/ShareableUsersContent.vue'),
+        meta:{requiresAuth:true,role:'patient',title:'共享用户'}
+      },
+      {
         path: 'edit-record/:id',
         name: 'EditRecord',
         component: () => import('@/components/patient/EditRecordContent.vue'),
@@ -74,12 +80,6 @@ const routes: Array<RouteRecordRaw> = [
         name: 'PirQuery',
         component: () => import('@/components/patient/PirQueryContent.vue'),
         meta: { requiresAuth: true, role: 'patient', title: '隐私查询' }
-      },
-      {
-        path: 'statistics',
-        name: 'HealthStatistics',
-        component: () => import('@/components/patient/StatisticsContent.vue'),
-        meta: { requiresAuth: true, role: 'patient', title: '健康统计' }
       },
       {
         path: 'pir-settings',

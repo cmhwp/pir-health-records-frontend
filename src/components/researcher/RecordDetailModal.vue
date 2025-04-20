@@ -73,9 +73,17 @@
         <div v-if="record.vital_signs && record.vital_signs.length > 0" class="vital-signs-section">
           <h3>生命体征</h3>
           <a-table :dataSource="record.vital_signs" :columns="vitalSignsColumns" rowKey="type" :pagination="false">
-            <template #bodyCell="{ column, text }">
-              <template v-if="column.dataIndex === 'measured_at'">
+            <template #bodyCell="{ column, text, record: vitalSign }">
+              <template v-if="column.dataIndex === 'type'">
+                <a-tag :color="getVitalSignColor(vitalSign.type)">
+                  {{ getVitalSignTypeName(vitalSign.type) }}
+                </a-tag>
+              </template>
+              <template v-else-if="column.dataIndex === 'measured_at'">
                 {{ formatDate(text) }}
+              </template>
+              <template v-else-if="column.dataIndex === 'value'">
+                {{ vitalSign.value }} {{ vitalSign.unit }}
               </template>
             </template>
           </a-table>
@@ -256,13 +264,41 @@ const fetchRecordDetail = async () => {
   }
 };
 
-const formatDate = (date: string | null) => {
-  if (!date) return '未指定';
-  try {
-    return new Date(date).toLocaleString();
-  } catch {
-    return date;
-  }
+const formatDate = (date: string | null | undefined): string => {
+  if (!date) return '未设置';
+  return new Date(date).toLocaleString();
+};
+
+const getVitalSignTypeName = (type: string): string => {
+  const typeMap: Record<string, string> = {
+    'BLOOD_PRESSURE': '血压',
+    'HEART_RATE': '心率',
+    'TEMPERATURE': '体温',
+    'BLOOD_OXYGEN': '血氧',
+    'BLOOD_GLUCOSE': '血糖',
+    'WEIGHT': '体重',
+    'HEIGHT': '身高',
+    'BMI': '体重指数',
+    'RESPIRATORY_RATE': '呼吸率',
+    'OTHER': '其他'
+  };
+  return typeMap[type] || type;
+};
+
+const getVitalSignColor = (type: string): string => {
+  const colorMap: Record<string, string> = {
+    'BLOOD_PRESSURE': 'red',
+    'HEART_RATE': 'orange',
+    'TEMPERATURE': 'gold',
+    'BLOOD_OXYGEN': 'blue',
+    'BLOOD_GLUCOSE': 'purple',
+    'WEIGHT': 'cyan',
+    'HEIGHT': 'green',
+    'BMI': 'lime',
+    'RESPIRATORY_RATE': 'magenta',
+    'OTHER': 'default'
+  };
+  return colorMap[type] || 'default';
 };
 
 const handleClose = () => {

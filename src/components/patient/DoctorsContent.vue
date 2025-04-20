@@ -160,6 +160,13 @@
             </a-descriptions-item>
           </a-descriptions>
           
+          <div style="margin-top: 16px; text-align: center;">
+            <a-button type="primary" @click="requestPrescription" size="large">
+              <template #icon><medicine-box-outlined /></template>
+              申请开处方
+            </a-button>
+          </div>
+          
           <a-divider orientation="left">个人简介</a-divider>
           <p>{{ currentDoctor.info?.bio || '暂无简介' }}</p>
           
@@ -204,8 +211,11 @@ import dayjs from 'dayjs';
 import { getDoctors, getPrescriptionsByDoctor } from '@/api/patient';
 import type { Doctor, PrescriptionInfo } from '@/types/patient';
 import { PrescriptionStatus } from '@/types/patient';
+import { useRouter } from 'vue-router';
+import { MedicineBoxOutlined } from '@ant-design/icons-vue';
 
 // 状态变量
+const router = useRouter();
 const loading = ref(false);
 const drawerLoading = ref(false);
 const prescriptionsLoading = ref(false);
@@ -440,6 +450,26 @@ const checkPrescriptionHistories = async (doctorIds: number[]): Promise<void> =>
       doctor.interaction.has_prescription = result.hasPrescription;
     }
   });
+};
+
+// 申请开处方
+const requestPrescription = () => {
+  if (!currentDoctor.value) return;
+  
+  // 将选中的医生信息存储到本地存储，以便在处方页面使用
+  sessionStorage.setItem('selectedDoctor', JSON.stringify({
+    id: currentDoctor.value.id,
+    name: currentDoctor.value.full_name,
+    hospital: currentDoctor.value.info?.hospital,
+    department: currentDoctor.value.info?.department,
+    specialty: currentDoctor.value.info?.specialty
+  }));
+  
+  // 关闭抽屉
+  drawerVisible.value = false;
+  
+  // 导航到处方页面
+  router.push('/patient/prescriptions?action=request');
 };
 </script>
 

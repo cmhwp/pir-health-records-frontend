@@ -76,21 +76,13 @@
 
     <div class="button-container" style="margin-bottom: 16px">
       <a-space>
-        <a-button type="primary" @click="addRecord">
-          <template #icon><plus-outlined /></template>
-          添加记录
-        </a-button>
-        <a-button @click="handleExport">
-          <template #icon><export-outlined /></template>
-          导出
-        </a-button>
-        <a-button @click="handleImport">
-          <template #icon><import-outlined /></template>
-          导入
-        </a-button>
         <a-button v-if="selectedRowKeys.length > 0" @click="showBatchVisibilityModal">
           <template #icon><eye-outlined /></template>
           批量设置可见性
+        </a-button>
+        <a-button v-if="selectedRowKeys.length > 0" @click="showBatchPirProtectionModal">
+          <template #icon><lock-outlined /></template>
+          批量设置PIR保护
         </a-button>
       </a-space>
       
@@ -106,7 +98,11 @@
       :pagination="pagination"
       @change="handleTableChange"
       rowKey="_id"
-      :row-selection="{ selectedRowKeys, onChange: onSelectChange }"
+      :row-selection="{ 
+        selectedRowKeys: selectedRowKeys, 
+        onChange: onSelectChange,
+        preserveSelectedRowKeys: false
+      }"
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'record_type'">
@@ -124,6 +120,20 @@
           <a-tag v-if="record.is_encrypted" color="purple">
             <template #icon><lock-outlined /></template>
             已加密
+          </a-tag>
+          <a-tag v-else color="green">
+            <template #icon><check-circle-outlined /></template>
+            未加密
+          </a-tag>
+        </template>
+        <template v-else-if="column.key === 'pir_protection'">
+          <a-tag v-if="record.pir_protected === true" color="blue">
+            <template #icon><lock-outlined /></template>
+            PIR保护
+          </a-tag>
+          <a-tag v-else color="green">
+            <template #icon><check-circle-outlined /></template>
+            未启用
           </a-tag>
         </template>
         <template v-else-if="column.key === 'action'">
@@ -181,10 +191,14 @@
       </a-upload>
       <a-alert
         style="margin-top: 16px"
-        message="支持JSON或CSV格式的健康记录文件导入"
+        message="支持Excel、CSV、JSON格式的健康记录文件导入"
         type="info"
         show-icon
       />
+      <a-divider />
+      <a-button type="link" @click="downloadImportTemplate">
+        <download-outlined /> 下载导入模板
+      </a-button>
     </a-modal>
 
     <!-- 导出模态框 -->
@@ -196,15 +210,12 @@
     >
       <a-form :model="exportForm" layout="vertical">
         <a-form-item label="导出范围">
-          <a-radio-group v-model:value="exportForm.export_all">
-            <a-radio :value="true">导出全部记录</a-radio>
-            <a-radio :value="false">导出选定记录</a-radio>
-          </a-radio-group>
+          <p>所有符合条件的记录将被导出</p>
         </a-form-item>
         <a-form-item label="导出格式">
           <a-radio-group v-model:value="exportForm.format">
             <a-radio value="json">JSON格式</a-radio>
-            <a-radio value="csv">CSV格式</a-radio>
+            <a-radio value="excel">Excel格式</a-radio>
           </a-radio-group>
         </a-form-item>
       </a-form>
@@ -278,6 +289,66 @@
         <p><strong>注意:</strong> 此操作将修改 <a-tag color="blue">{{ selectedRecordIds.length }}</a-tag> 条健康记录的可见性设置。</p>
       </a-form>
     </a-modal>
+
+    <!-- 解密模态框 -->
+    <a-modal
+      v-model:visible="decryptModalVisible"
+      title="解密健康记录"
+      :confirm-loading="decryptingRecord"
+      @ok="decryptRecord"
+    >
+      <p>此记录已加密，请输入解密密钥以继续<strong>
+        {{ currentRecord.action === 'view' ? '查看' : 
+           currentRecord.action === 'edit' ? '编辑' : 
+           currentRecord.action === 'share' ? '共享' : 
+           currentRecord.action === 'versions' ? '查看版本历史' : '操作' }}
+      </strong>。</p>
+      <a-form layout="vertical">
+        <a-form-item label="解密密钥">
+          <a-input-password
+            v-model:value="decryptKey"
+            placeholder="请输入解密密钥"
+            style="width: 100%"
+          />
+        </a-form-item>
+      </a-form>
+      <p style="color: #ff4d4f; font-size: 12px;">注意：密钥错误会导致解密失败，无法继续操作。</p>
+    </a-modal>
+
+    <!-- 批量设置PIR保护对话框 -->
+    <a-modal
+      v-model:visible="batchPirProtectionModalVisible"
+      title="批量设置PIR隐私保护"
+      :confirm-loading="updatingPirProtection"
+      @ok="updateBatchPirProtection"
+    >
+      <a-form layout="vertical">
+        <a-form-item label="PIR隐私保护状态">
+          <a-radio-group v-model:value="batchPirProtection">
+            <a-radio :value="true">启用PIR保护</a-radio>
+            <a-radio :value="false">关闭PIR保护</a-radio>
+          </a-radio-group>
+        </a-form-item>
+        
+        <a-alert v-if="batchPirProtection" 
+          type="success" 
+          message="启用PIR隐私保护，当执行匿名查询时这些记录将被包含" 
+          description="系统会添加噪声查询来混淆您的真实意图，防止第三方推断您的查询模式"
+          style="margin-top: 8px"
+          show-icon />
+          
+        <a-alert v-else
+          type="warning" 
+          message="关闭PIR隐私保护，记录在匿名查询时将被排除" 
+          description="不启用PIR保护的记录在执行匿名查询时将不被包含，这可能会导致查询结果不完整"
+          style="margin-top: 8px"
+          show-icon />
+          
+        <a-divider />
+        
+        <p><strong>注意:</strong> 此操作将修改 <a-tag color="blue">{{ selectedRecordIds.length }}</a-tag> 条健康记录的PIR保护设置。</p>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
@@ -303,7 +374,8 @@ import {
   DownloadOutlined,
   StopOutlined,
   CheckCircleOutlined,
-  LockOutlined
+  LockOutlined,
+  UploadOutlined
 } from '@ant-design/icons-vue';
 import {
   getHealthRecords,
@@ -311,7 +383,11 @@ import {
   secureDeleteHealthRecord,
   exportHealthRecords,
   importHealthRecords,
-  batchUpdateVisibility
+  getImportTemplate,
+  getImportTemplateUrl,
+  batchUpdateVisibility,
+  batchUpdatePirProtection,
+  decryptHealthRecord
 } from '@/api/health';
 import { RecordVisibility, type HealthRecord, type GetRecordsParams } from '@/types/health';
 import type { UploadProps } from 'ant-design-vue';
@@ -391,6 +467,12 @@ const columns = [
     width: 100
   },
   {
+    title: 'PIR保护',
+    dataIndex: 'pir_protected',
+    key: 'pir_protection',
+    width: 100
+  },
+  {
     title: '操作',
     key: 'action',
     width: 240
@@ -427,11 +509,23 @@ const batchVisibility = ref(RecordVisibility.PRIVATE);
 const selectedRecordIds = ref<string[]>([]);
 const updatingVisibility = ref(false);
 
+// 批量设置PIR保护功能
+const batchPirProtectionModalVisible = ref(false);
+const batchPirProtection = ref(true);
+const updatingPirProtection = ref(false);
+
 // 表格选择功能
 const selectedRowKeys = ref<(string | number)[]>([]);
 const onSelectChange = (keys: (string | number)[]) => {
+  selectedRowKeys.value = keys;
   selectedRecordIds.value = keys as string[];
 };
+
+// 加密记录功能
+const decryptModalVisible = ref(false);
+const decryptingRecord = ref(false);
+const currentRecord = ref<{ id: string; action: string }>({ id: '', action: '' });
+const decryptKey = ref('');
 
 // 获取记录类型名称
 const getRecordTypeName = (type: string): string => {
@@ -482,8 +576,13 @@ const fetchRecords = async () => {
     };
     
     const response = await getHealthRecords(queryParams);
+    console.log('获取健康记录列表',response);
     if (response.success && response.data) {
-      records.value = response.data.records;
+      // 确保所有记录都有pir_protected字段，没有的设为false
+      records.value = response.data.records.map(record => ({
+        ...record,
+        pir_protected: record.pir_protected === true ? true : false
+      }));
       pagination.total = response.data.total;
       pagination.current = response.data.current_page;
     } else {
@@ -525,26 +624,63 @@ const resetFilters = () => {
 
 // 查看记录详情
 const viewRecord = (recordId: string) => {
-  router.push(`/patient/record/${recordId}`);
+  const record = records.value.find(r => r._id === recordId);
+  if (record && record.is_encrypted) {
+    // 对于加密记录，先打开解密模态框
+    currentRecord.value = { id: recordId, action: 'view' };
+    decryptKey.value = '';
+    decryptModalVisible.value = true;
+  } else {
+    // 未加密记录直接跳转
+    router.push(`/patient/record/${recordId}`);
+  }
 };
 
 // 编辑记录
 const editRecord = (recordId: string) => {
-  router.push(`/patient/edit-record/${recordId}`);
+  const record = records.value.find(r => r._id === recordId);
+  if (record && record.is_encrypted) {
+    // 对于加密记录，先打开解密模态框
+    currentRecord.value = { id: recordId, action: 'edit' };
+    decryptKey.value = '';
+    decryptModalVisible.value = true;
+  } else {
+    // 未加密记录直接跳转
+    router.push(`/patient/edit-record/${recordId}`);
+  }
 };
 
 // 分享记录
 const shareRecord = (recordId: string) => {
-  router.push(`/patient/record/${recordId}?action=share`);
+  const record = records.value.find(r => r._id === recordId);
+  if (record && record.is_encrypted) {
+    // 对于加密记录，先打开解密模态框
+    currentRecord.value = { id: recordId, action: 'share' };
+    decryptKey.value = '';
+    decryptModalVisible.value = true;
+  } else {
+    // 未加密记录直接跳转
+    router.push(`/patient/record/${recordId}?action=share`);
+  }
 };
 
 // 查看版本历史
 const viewVersions = (recordId: string) => {
-  router.push(`/patient/record/${recordId}?tab=versions`);
+  const record = records.value.find(r => r._id === recordId);
+  if (record && record.is_encrypted) {
+    // 对于加密记录，先打开解密模态框
+    currentRecord.value = { id: recordId, action: 'versions' };
+    decryptKey.value = '';
+    decryptModalVisible.value = true;
+  } else {
+    // 未加密记录直接跳转
+    router.push(`/patient/record/${recordId}?tab=versions`);
+  }
 };
 
 // 删除记录
 const deleteRecord = (recordId: string) => {
+  // 删除操作不需要解密
   recordToDelete.value = recordId;
   secureDelete.value = false;
   createBackup.value = true;
@@ -595,13 +731,17 @@ const handleImport = () => {
 
 // 上传前验证
 const beforeImportUpload: UploadProps['beforeUpload'] = (file) => {
-  const isJSONOrCSV = file.type === 'application/json' || 
+  const isValidType = file.type === 'application/json' || 
                       file.type === 'text/csv' || 
+                      file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                      file.type === 'application/vnd.ms-excel' ||
                       file.name.endsWith('.json') || 
-                      file.name.endsWith('.csv');
+                      file.name.endsWith('.csv') ||
+                      file.name.endsWith('.xlsx') ||
+                      file.name.endsWith('.xls');
                       
-  if (!isJSONOrCSV) {
-    message.error('只能上传 JSON 或 CSV 文件!');
+  if (!isValidType) {
+    message.error('只能上传 Excel、JSON 或 CSV 文件!');
   }
   
   const isLt10M = file.size / 1024 / 1024 < 10;
@@ -609,7 +749,7 @@ const beforeImportUpload: UploadProps['beforeUpload'] = (file) => {
     message.error('文件必须小于 10MB!');
   }
   
-  return isJSONOrCSV && isLt10M;
+  return isValidType && isLt10M;
 };
 
 // 提交导入
@@ -636,6 +776,37 @@ const handleImportSubmit = async () => {
     message.error('导入记录失败');
   } finally {
     importing.value = false;
+  }
+};
+
+/**
+ * 下载导入模板
+ */
+const downloadImportTemplate = async () => {
+  try {
+    const response = await getImportTemplate('excel');
+    
+    if (response.success && response.data) {
+      const { filename, download_url } = response.data;
+      
+      // 提取token部分
+      const token = download_url.split('?token=')[1];
+      
+      // 创建下载链接并点击
+      const link = document.createElement('a');
+      link.href = getImportTemplateUrl(filename, token);
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      message.success('正在下载导入模板');
+    } else {
+      message.error(response.message || '获取导入模板失败');
+    }
+  } catch (error) {
+    console.error('获取导入模板失败:', error);
+    message.error('获取导入模板失败');
   }
 };
 
@@ -754,6 +925,106 @@ const executeBatchVisibilityUpdate = async () => {
 // 添加记录
 const addRecord = () => {
   router.push('/patient/add-record');
+};
+
+// 解密记录
+const decryptRecord = async () => {
+  if (!currentRecord.value.id || !decryptKey.value) {
+    message.warning('请输入解密密钥');
+    return;
+  }
+  
+  decryptingRecord.value = true;
+  try {
+    const response = await decryptHealthRecord(currentRecord.value.id, decryptKey.value);
+    
+    if (response.success) {
+      message.success('记录已成功解密');
+      decryptModalVisible.value = false;
+      
+      // 在本地更新记录状态
+      const recordIndex = records.value.findIndex(r => r._id === currentRecord.value.id);
+      if (recordIndex !== -1) {
+        // 更新记录为已解密状态
+        const updatedRecord = { ...records.value[recordIndex] };
+        if (response.data && response.data.record) {
+          // 如果API返回了完整记录，则使用返回的数据
+          records.value[recordIndex] = {
+            ...updatedRecord,
+            ...response.data.record,
+            is_encrypted: false
+          };
+        } else {
+          // 否则只更新加密状态
+          records.value[recordIndex].is_encrypted = false;
+        }
+      }
+      
+      // 根据操作类型执行不同的跳转
+      switch (currentRecord.value.action) {
+        case 'view':
+          router.push(`/patient/record/${currentRecord.value.id}`);
+          break;
+        case 'edit':
+          router.push(`/patient/edit-record/${currentRecord.value.id}`);
+          break;
+        case 'share':
+          router.push(`/patient/record/${currentRecord.value.id}?action=share`);
+          break;
+        case 'versions':
+          router.push(`/patient/record/${currentRecord.value.id}?tab=versions`);
+          break;
+      }
+      
+      // 清空密钥
+      decryptKey.value = '';
+    } else {
+      message.error(response.message || '解密失败');
+    }
+  } catch (error) {
+    console.error('解密失败:', error);
+    message.error('解密失败');
+  } finally {
+    decryptingRecord.value = false;
+  }
+};
+
+// 显示批量设置PIR保护对话框
+const showBatchPirProtectionModal = () => {
+  // 获取选中的记录ID
+  if (selectedRowKeys.value.length === 0) {
+    message.warning('请先选择要更新的记录');
+    return;
+  }
+  selectedRecordIds.value = selectedRowKeys.value as string[];
+  batchPirProtectionModalVisible.value = true;
+};
+
+// 批量更新PIR保护
+const updateBatchPirProtection = async () => {
+  if (selectedRecordIds.value.length === 0) return;
+  
+  updatingPirProtection.value = true;
+  try {
+    const response = await batchUpdatePirProtection({
+      record_ids: selectedRecordIds.value,
+      pir_protected: batchPirProtection.value
+    });
+    
+    if (response.success) {
+      message.success(`成功更新 ${response.data?.updated_count || 0} 条记录的PIR保护状态`);
+      batchPirProtectionModalVisible.value = false;
+      selectedRecordIds.value = [];
+      fetchRecords(); // 刷新列表
+    } else {
+      message.error(response.message || '批量更新PIR保护失败');
+    }
+  } catch (error) {
+    console.error('批量更新PIR保护失败:', error);
+    message.error('批量更新PIR保护失败');
+  } finally {
+    updatingPirProtection.value = false;
+  }
 };
 
 // 组件挂载时加载记录类型和记录列表

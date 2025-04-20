@@ -105,59 +105,6 @@
       </a-col>
     </a-row>
 
-    <!-- 健康统计区域 -->
-    <a-row :gutter="16" style="margin-top: 16px">
-      <a-col :span="12">
-        <a-card title="健康记录趋势" :loading="loading" :bordered="false">
-          <div id="health-trend-chart" style="height: 300px;"></div>
-        </a-card>
-      </a-col>
-      <a-col :span="12">
-        <a-card title="记录类型分布" :loading="loading" :bordered="false">
-          <div id="record-type-chart" style="height: 300px;"></div>
-        </a-card>
-      </a-col>
-    </a-row>
-
-    <!-- 预约和处方区域 -->
-    <a-row :gutter="16" style="margin-top: 16px">
-      <a-col :span="12">
-        <a-card title="有效处方" :loading="loading">
-          <template #extra>
-            <a-button type="link" @click="navigateToPrescriptions">查看全部</a-button>
-          </template>
-          <a-list :data-source="activePrescriptions" size="small">
-            <template #renderItem="{ item }">
-              <a-list-item>
-                <a-list-item-meta>
-                  <template #title>{{ item.diagnosis }}</template>
-                  <template #description>
-                    <div>
-                      <MedicineBoxOutlined /> {{ item.items.length }} 种药品
-                      <span style="margin-left: 8px">
-                        <UserOutlined /> {{ item.doctor_name }}
-                      </span>
-                    </div>
-                    <div style="margin-top: 4px">
-                      <ClockCircleOutlined /> 有效至: {{ formatDate(item.valid_until) }}
-                    </div>
-                  </template>
-                  <template #avatar>
-                    <a-avatar style="background-color: #52c41a">
-                      {{ item.diagnosis ? item.diagnosis.charAt(0) : 'P' }}
-                    </a-avatar>
-                  </template>
-                </a-list-item-meta>
-              </a-list-item>
-            </template>
-            <template #empty>
-              <a-empty description="暂无有效处方" />
-            </template>
-          </a-list>
-        </a-card>
-      </a-col>
-    </a-row>
-
     <!-- 记录详情抽屉 -->
     <a-drawer
       v-model:visible="recordDrawerVisible"
@@ -216,6 +163,32 @@
                 {{ formatDateRange(currentRecord.medication.start_date, currentRecord.medication.end_date) }}
               </a-descriptions-item>
             </a-descriptions>
+          </div>
+
+          <!-- 生命体征数据 -->
+          <div v-if="currentRecord.vital_signs && currentRecord.vital_signs.length > 0" style="margin-top: 20px">
+            <h3>生命体征数据</h3>
+            <a-table
+              :dataSource="currentRecord.vital_signs"
+              :columns="vitalSignColumns"
+              :pagination="false"
+              size="small"
+              bordered
+            >
+              <template #bodyCell="{ column, text, record: vitalSign }">
+                <template v-if="column.dataIndex === 'type'">
+                  <a-tag :color="getVitalSignColor(vitalSign.type)">
+                    {{ getVitalSignTypeName(vitalSign.type) }}
+                  </a-tag>
+                </template>
+                <template v-else-if="column.dataIndex === 'measured_at'">
+                  {{ formatDate(vitalSign.measured_at) }}
+                </template>
+                <template v-else-if="column.dataIndex === 'value'">
+                  {{ vitalSign.value }} {{ vitalSign.unit }}
+                </template>
+              </template>
+            </a-table>
           </div>
 
           <div v-if="currentRecord.files && currentRecord.files.length > 0" style="margin-top: 20px">
@@ -305,20 +278,10 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, computed, onMounted, inject } from 'vue';
+import { ref, reactive, computed, onMounted, inject, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { message } from 'ant-design-vue';
 import dayjs from 'dayjs';
-import * as echarts from 'echarts/core';
-import {
-  TitleComponent,
-  TooltipComponent,
-  LegendComponent,
-  GridComponent,
-} from 'echarts/components';
-import { BarChart, LineChart, PieChart } from 'echarts/charts';
-import { UniversalTransition } from 'echarts/features';
-import { CanvasRenderer } from 'echarts/renderers';
 import {
   FileOutlined,
   EyeOutlined,
@@ -330,8 +293,8 @@ import {
   ClockCircleOutlined,
   UserOutlined
 } from '@ant-design/icons-vue';
-import { getHealthRecords, getHealthStatistics, getPirSettings, getHealthRecord, shareHealthRecord, getRecordFileUrl } from '@/api/health';
-import { RecordVisibility, SharePermission, type HealthRecord } from '@/types/health';
+import { getHealthRecords, getHealthStatistics, getPirSettings, getHealthRecord, shareHealthRecord, getRecordFileUrl, getMonthlyRecordStats } from '@/api/health';
+import { RecordVisibility, SharePermission, type HealthRecord, type MonthlyRecordStatsResponse } from '@/types/health';
 import type { User } from '@/types/auth';
 import { getUsers } from '@/api/admin';
 import { useRecordTypes } from '@/hooks/useRecordTypes';
@@ -345,29 +308,6 @@ const recordTypeCounts = ref<Record<string, number>>({});
 const recentRecords = ref<HealthRecord[]>([]);
 const pirUsageRatio = ref(0);
 const privacyScore = ref(0);
-
-// 模拟处方数据
-const activePrescriptions = ref([
-  {
-    id: 1,
-    diagnosis: '感冒',
-    doctor_name: '张医生',
-    items: [
-      { name: '感冒灵颗粒', dosage: '每次1袋，一日3次' },
-      { name: '板蓝根冲剂', dosage: '每次1袋，一日3次' }
-    ],
-    valid_until: dayjs().add(5, 'day').toISOString()
-  },
-  {
-    id: 2,
-    diagnosis: '高血压',
-    doctor_name: '李医生',
-    items: [
-      { name: '苯磺酸氨氯地平片', dosage: '每次5mg，一日1次' }
-    ],
-    valid_until: dayjs().add(30, 'day').toISOString()
-  }
-]);
 
 // 记录详情
 const recordDrawerVisible = ref(false);
@@ -396,6 +336,68 @@ const encryptionLevelMap = {
 
 // 使用hook获取记录类型相关函数
 const { getRecordTypeName, getRecordTypeColor, getRecordTypeShort } = useRecordTypes();
+
+// 生命体征表格列定义
+const vitalSignColumns = [
+  {
+    title: '类型',
+    dataIndex: 'type',
+    key: 'type',
+    width: '25%'
+  },
+  {
+    title: '数值',
+    dataIndex: 'value',
+    key: 'value',
+    width: '25%'
+  },
+  {
+    title: '单位',
+    dataIndex: 'unit',
+    key: 'unit',
+    width: '15%'
+  },
+  {
+    title: '测量时间',
+    dataIndex: 'measured_at',
+    key: 'measured_at',
+    width: '35%'
+  }
+];
+
+// 获取生命体征类型名称
+const getVitalSignTypeName = (type: string): string => {
+  const typeMap: Record<string, string> = {
+    'BLOOD_PRESSURE': '血压',
+    'HEART_RATE': '心率',
+    'TEMPERATURE': '体温',
+    'BLOOD_OXYGEN': '血氧',
+    'BLOOD_GLUCOSE': '血糖',
+    'WEIGHT': '体重',
+    'HEIGHT': '身高',
+    'BMI': '体重指数',
+    'RESPIRATORY_RATE': '呼吸率',
+    'OTHER': '其他'
+  };
+  return typeMap[type] || type;
+};
+
+// 获取生命体征颜色
+const getVitalSignColor = (type: string): string => {
+  const colorMap: Record<string, string> = {
+    'BLOOD_PRESSURE': 'red',
+    'HEART_RATE': 'orange',
+    'TEMPERATURE': 'gold',
+    'BLOOD_OXYGEN': 'blue',
+    'BLOOD_GLUCOSE': 'purple',
+    'WEIGHT': 'cyan',
+    'HEIGHT': 'green',
+    'BMI': 'lime',
+    'RESPIRATORY_RATE': 'magenta',
+    'OTHER': 'default'
+  };
+  return colorMap[type] || 'default';
+};
 
 // 统计卡片数据
 const statisticsCards = computed(() => [
@@ -500,7 +502,31 @@ const getTopRecordType = (): string => {
 // 获取本月记录数量
 const getMonthlyRecordCount = (): number => {
   const currentMonth = dayjs().format('M');
-  return recordTypeCounts.value[`month_${currentMonth}`] || 0;
+  return monthlyStats.value.current_month_count || 0;
+};
+
+// 月度记录数据
+const monthlyStats = ref<MonthlyRecordStatsResponse>({
+  current_month_count: 0,
+  monthly_counts: {},
+  type_counts: {},
+  month_over_month_growth: 0
+});
+
+// 获取月度记录统计
+const fetchMonthlyStats = async () => {
+  try {
+    // 获取当前月份，格式YYYY-MM
+    const currentMonth = dayjs().format('YYYY-MM');
+    const response = await getMonthlyRecordStats(currentMonth);
+    
+    if (response.success && response.data) {
+      monthlyStats.value = response.data;
+    }
+  } catch (error) {
+    console.error('获取月度记录统计失败:', error);
+    message.error('获取月度记录统计失败');
+  }
 };
 
 // 获取健康记录统计信息
@@ -513,11 +539,6 @@ const fetchStatistics = async () => {
       // 计算记录总数
       recordCount.value = Object.values(response.data.record_types)
         .reduce((sum, count) => sum + count, 0);
-      
-      // 月度记录统计 - 使用存在的字段
-      const monthlyData = response.data.record_types;  // 替换为实际存在的字段
-      const currentMonth = dayjs().format('M');
-      recordTypeCounts.value[`month_${currentMonth}`] = monthlyData[`month_${currentMonth}`] || 0;
     }
   } catch (error) {
     console.error('获取健康统计数据失败:', error);
@@ -671,12 +692,6 @@ const submitShare = async () => {
   }
 };
 
-// 格式化日期时间
-const formatDateTime = (dateString: string | undefined): string => {
-  if (!dateString) return '未记录';
-  return dayjs(dateString).format('YYYY-MM-DD HH:mm');
-};
-
 // 导航到其他页面
 const navigateToRecords = () => {
   router.push('/patient/records');
@@ -702,10 +717,12 @@ onMounted(async () => {
     await Promise.all([
       fetchStatistics(),
       fetchRecentRecords(),
-      fetchPrivacySettings()
+      fetchPrivacySettings(),
+      fetchMonthlyStats()
     ]);
 
-    // 已经在前面设置了模拟处方数据，不需要调用API
+    // 等待DOM更新后渲染图表
+    await nextTick();
   } catch (error) {
     console.error('加载仪表盘数据失败:', error);
   } finally {
