@@ -19,10 +19,6 @@
           <dashboard-outlined />
           <span>系统概览</span>
         </a-menu-item>
-        <a-menu-item key="system-logs">
-          <file-outlined />
-          <span>系统日志</span>
-        </a-menu-item>
         <a-menu-item key="users">
           <team-outlined />
           <span>用户管理</span>
@@ -35,19 +31,17 @@
           <tags-outlined />
           <span>记录类型管理</span>
         </a-menu-item>
-        <a-sub-menu key="data-management">
-          <template #title>
-            <span>
-              <database-outlined />
-              <span>数据管理</span>
-            </span>
-          </template>
-          <a-menu-item key="batch-records">批量管理记录</a-menu-item>
-          <a-menu-item key="export-data">导出数据</a-menu-item>
-        </a-sub-menu>
+        <a-menu-item key="export-data">
+          <database-outlined />
+          <span>数据导出</span>
+        </a-menu-item>
         <a-menu-item key="settings">
           <setting-outlined />
           <span>系统设置</span>
+        </a-menu-item>
+        <a-menu-item key="system-logs">
+          <file-outlined />
+          <span>系统日志</span>
         </a-menu-item>
         <a-menu-item key="user-activity">
           <bar-chart-outlined />
@@ -164,7 +158,6 @@ const currentPageTitle = computed(() => {
     case 'dashboard': return '系统概览';
     case 'system-logs': return '系统日志';
     case 'users': return '用户管理';
-    case 'batch-records': return '批量管理记录';
     case 'export-data': return '导出数据';  
     case 'settings': return '系统设置';
     case 'user-activity': return '用户活动分析';
@@ -212,12 +205,8 @@ const setInitialSelectedKey = () => {
     selectedKeys.value = ['system-logs'];
   } else if (path.includes('/admin/users')) {
     selectedKeys.value = ['users']; 
-  } else if (path.includes('/admin/batch-records')) {
-    selectedKeys.value = ['batch-records'];
   } else if (path.includes('/admin/export-data')) {
     selectedKeys.value = ['export-data'];
-  } else if (path.includes('/admin/data-backup')) {
-    selectedKeys.value = ['data-backup'];
   } else if (path.includes('/admin/settings')) {
     selectedKeys.value = ['settings'];
   } else if (path.includes('/admin/user-activity')) {

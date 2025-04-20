@@ -26,7 +26,15 @@ import type {
   RecordTypesResponse,
   RecordTypeResponse,
   CreateRecordTypeRequest,
-  UpdateRecordTypeRequest
+  UpdateRecordTypeRequest,
+
+
+  ExportSystemDataParams,
+  ExportTaskResponse,
+  ExportHistoryQueryParams,
+  ExportHistoryResponse,
+  ExportTaskDetail,
+  ExportOptionsResponse
 } from '@/types/admin';
 import type { ApiResponse } from '@/types/auth';
 import type { 
@@ -111,24 +119,6 @@ export const getUserActivity = (
 };
 
 /**
- * 批量管理记录
- */
-export const batchManageRecords = (
-  data: BatchManageRecordsRequest
-): Promise<ApiResponse<{ message: string, deleted_count?: number, updated_count?: number }>> => {
-  return request.post('/admin/records/batch', data);
-};
-
-/**
- * 导出系统数据
- */
-export const exportSystemData = (
-  data: ExportDataRequest
-): Promise<ApiResponse<ExportDataResponse>> => {
-  return request.post('/admin/export/data', data);
-};
-
-/**
  * 下载导出的数据
  */
 export const downloadExportedData = (filename: string): string => {
@@ -156,65 +146,6 @@ export const updateSystemSettings = (
  */
 export const getAdminDashboard = (): Promise<ApiResponse<AdminDashboardResponse>> => {
   return request.get('/admin/dashboard');
-};
-
-/**
- * 获取批量任务列表
- */
-export const getBatchJobs = (
-  status?: string
-): Promise<ApiResponse<BatchJobsResponse>> => {
-  const params = status ? { status } : {};
-  return request.get('/admin/batch-records', { params });
-};
-
-/**
- * 获取批量任务详情
- */
-export const getBatchJobDetails = (
-  jobId: string
-): Promise<ApiResponse<BatchJobDetailsResponse>> => {
-  return request.get(`/admin/batch-records/${jobId}`);
-};
-
-/**
- * 上传批量数据文件
- */
-export const uploadBatchFile = (
-  formData: FormData
-): Promise<ApiResponse<BatchJobUploadResponse>> => {
-  return request.post('/admin/batch-records/upload', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
-  });
-};
-
-/**
- * 开始处理批量任务
- */
-export const startBatchProcessing = (
-  jobId: string
-): Promise<ApiResponse<BatchJobProcessResponse>> => {
-  return request.post(`/admin/batch-records/${jobId}/start`);
-};
-
-/**
- * 删除批量任务
- */
-export const deleteBatchJob = (
-  jobId: string
-): Promise<ApiResponse<{ message: string }>> => {
-  return request.delete(`/admin/batch-records/${jobId}`);
-};
-
-/**
- * 获取批量任务结果下载URL
- */
-export const getBatchResultsDownloadUrl = (
-  jobId: string
-): string => {
-  return `${request.defaults.baseURL}/admin/batch-records/${jobId}/download`;
 };
 
 /**
@@ -305,4 +236,34 @@ export const updateRecordType = (id: number, data: UpdateRecordTypeRequest): Pro
  */
 export const deleteRecordType = (id: number): Promise<ApiResponse<{ message: string }>> => {
   return request.delete(`/admin/record-types/${id}`);
-}; 
+};
+
+// 数据导出相关接口
+export async function exportSystemData(params: any): Promise<ApiResponse<any>> {
+  return request.post('/admin/export/data', params);
+}
+
+export async function getExportHistory(params: any): Promise<ApiResponse<any>> {
+  return request.get('/admin/export/history', { params });
+}
+
+export async function getExportDetails(exportId: string): Promise<ApiResponse<any>> {
+  return request.get(`/admin/export/${exportId}`);
+}
+
+export async function cancelExportTask(exportId: string): Promise<ApiResponse<any>> {
+  return request.post(`/admin/export/${exportId}/cancel`);
+}
+
+export async function deleteExportTask(exportId: string, deleteFile: boolean = false): Promise<ApiResponse<any>> {
+  return request.delete(`/admin/export/${exportId}`, { params: { delete_file: deleteFile } });
+}
+
+export async function getExportOptions(): Promise<ApiResponse<any>> {
+  return request.get('/admin/export/options');
+}
+
+// 获取下载链接 (用于前端直接跳转，不通过API调用)
+export function getExportDownloadUrl(filename: string): string {
+  return `${request.defaults.baseURL}/admin/export/download/${filename}`;
+} 

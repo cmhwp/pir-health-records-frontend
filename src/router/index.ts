@@ -253,12 +253,6 @@ const routes: Array<RouteRecordRaw> = [
         meta: { requiresAuth: true, role: 'admin', title: '系统日志' }
       },
       {
-        path: 'batch-records',
-        name: 'BatchRecords',
-        component: () => import('@/components/admin/BatchRecordsContent.vue'),
-        meta: { requiresAuth: true, role: 'admin', title: '批量管理记录' }
-      },
-      {
         path: 'export-data',
         name: 'ExportData',
         component: () => import('@/components/admin/ExportDataContent.vue'),

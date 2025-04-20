@@ -452,4 +452,106 @@ export interface UpdateRecordTypeRequest {
   color?: string;
   icon?: string;
   is_active?: boolean;
+}
+
+// 数据导出相关类型
+
+export enum ExportStatus {
+  PENDING = 'pending',
+  PROCESSING = 'processing',
+  COMPLETED = 'completed',
+  FAILED = 'failed'
+}
+
+export interface ExportSystemDataParams {
+  export_type: string;
+  format: string;
+  options?: {
+    anonymize?: boolean;
+    compress?: boolean;
+    includeDeleted?: boolean;
+  };
+  patient_id?: string;
+  start_date?: string;
+  end_date?: string;
+  limit?: number;
+}
+
+export interface ExportTaskResponse {
+  exportId: string;
+  filename: string;
+  downloadUrl: string;
+  recordCount: number;
+  fileSize: number;
+}
+
+export interface ExportTask {
+  id: number;
+  exportId?: string;
+  userId?: number;
+  dataType: string;
+  format: string;
+  status: ExportStatus;
+  startedAt: string;
+  completedAt?: string;
+  filename: string;
+  filePath: string;
+  recordCount?: number;
+  fileSize?: number;
+  errorMessage?: string;
+  exportedBy: string;
+  options: string[];
+  createdAt: string;
+}
+
+export interface ExportHistoryQueryParams {
+  page?: number;
+  per_page?: number;
+  type?: string;
+  status?: string;
+}
+
+export interface ExportHistoryResponse {
+  exportHistory: ExportTask[];
+  total: number;
+  pages: number;
+  current_page: number;
+}
+
+export interface ExportTaskDetail extends ExportTask {
+  exportedByFullName?: string;
+  exportedByEmail?: string;
+  fileExists: boolean;
+  downloadUrl?: string;
+  logs?: SystemLog[];
+  parameters?: any;
+}
+
+export interface ExportTypeOption {
+  value: string;
+  label: string;
+  description: string;
+  formats: string[];
+  icon: string;
+}
+
+export interface ExportFormatOption {
+  value: string;
+  label: string;
+  description: string;
+  mime_type: string;
+  icon: string;
+}
+
+export interface ExportOptionItem {
+  value: string;
+  label: string;
+  description: string;
+}
+
+export interface ExportOptionsResponse {
+  exportTypes: ExportTypeOption[];
+  exportFormats: ExportFormatOption[];
+  exportOptions: ExportOptionItem[];
+  recentTypes: string[];
 } 

@@ -13,7 +13,8 @@ export const LOG_TYPES = {
   ACCESS: 'access',    // 访问控制日志（查看记录、文件下载等）
   EXPORT: 'export',    // 数据导出日志（导出、下载等）
   IMPORT: 'import',    // 数据导入日志（导入、上传等）
-  AUDIT: 'audit'       // 审计日志（敏感操作、合规检查等）
+  AUDIT: 'audit',       // 审计日志（敏感操作、合规检查等）
+  RESEARCH: 'research' // 研究员操作日志（查看记录、文件下载等）
 } as const;
 
 /**
@@ -31,7 +32,8 @@ export const LOG_TYPE_TEXTS: Record<string, string> = {
   [LOG_TYPES.ACCESS]: '访问',
   [LOG_TYPES.EXPORT]: '导出',
   [LOG_TYPES.IMPORT]: '导入',
-  [LOG_TYPES.AUDIT]: '审计'
+  [LOG_TYPES.AUDIT]: '审计',
+  [LOG_TYPES.RESEARCH]: '研究员'
 };
 
 /**
@@ -49,7 +51,8 @@ export const LOG_TYPE_COLORS: Record<string, string> = {
   [LOG_TYPES.ACCESS]: 'geekblue',
   [LOG_TYPES.EXPORT]: 'orange',
   [LOG_TYPES.IMPORT]: 'lime',
-  [LOG_TYPES.AUDIT]: 'volcano'
+  [LOG_TYPES.AUDIT]: 'volcano',
+  [LOG_TYPES.RESEARCH]: 'purple'
 };
 
 /**

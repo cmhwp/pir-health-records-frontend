@@ -395,9 +395,6 @@ const loadSettings = async () => {
   try {
     const response = await getSystemSettings();
     if (response.success && response.data) {
-      // 保存原始设置数据以检测变更
-      initialSettings.value = JSON.parse(JSON.stringify(response.data.settings));
-      
       // 设置各个配置项的值
       if (response.data.settings.security) {
         Object.assign(securitySettings, response.data.settings.security);
@@ -424,6 +421,48 @@ const loadSettings = async () => {
       
       // 保存设置可见性
       settingsVisibility.value = response.data.settings_visibility || {};
+      
+      // 保存初始设置副本，用于后续检测变更
+      // 需要深度复制对象，避免引用同一对象
+      initialSettings.value = {
+        security: {
+          password_policy: {
+            min_length: securitySettings.password_policy.min_length,
+            require_special: securitySettings.password_policy.require_special,
+            require_digit: securitySettings.password_policy.require_digit,
+            require_uppercase: securitySettings.password_policy.require_uppercase,
+            require_lowercase: securitySettings.password_policy.require_lowercase,
+            require_numbers: securitySettings.password_policy.require_numbers
+          },
+          login_attempts: securitySettings.login_attempts,
+          session_timeout: securitySettings.session_timeout,
+          require_email_confirmation: securitySettings.require_email_confirmation
+        },
+        privacy: {
+          pir_enabled: privacySettings.pir_enabled,
+          pir_batch_size: privacySettings.pir_batch_size,
+          default_record_visibility: privacySettings.default_record_visibility
+        },
+        registration: {
+          registration_enabled: registrationSettings.registration_enabled,
+          require_email_confirmation: registrationSettings.require_email_confirmation,
+          allow_researcher_registration: registrationSettings.allow_researcher_registration
+        },
+        system: {
+          debug_mode: systemConfig.debug_mode,
+          upload_limit: systemConfig.upload_limit,
+          maintenance_mode: systemConfig.maintenance_mode,
+          max_export_size: systemConfig.max_export_size
+        },
+        notifications: {
+          email_notifications: notificationSettings.email_notifications,
+          system_notifications: notificationSettings.system_notifications,
+          notification_types: [...notificationSettings.notification_types]
+        }
+      };
+      
+      // 重置更改标志
+      hasChanges.value = false;
     }
   } catch (error) {
     console.error('加载系统设置失败:', error);
@@ -469,13 +508,43 @@ const saveAllSettings = async () => {
     const response = await updateSystemSettings(settings);
     if (response.success) {
       message.success('系统设置更新成功');
+      
       // 更新初始设置以重置变更检测
       initialSettings.value = {
-        security: JSON.parse(JSON.stringify(securitySettings)),
-        privacy: JSON.parse(JSON.stringify(privacySettings)),
-        registration: JSON.parse(JSON.stringify(registrationSettings)),
-        system: JSON.parse(JSON.stringify(systemConfig)),
-        notifications: JSON.parse(JSON.stringify(notificationSettings))
+        security: {
+          password_policy: {
+            min_length: securitySettings.password_policy.min_length,
+            require_special: securitySettings.password_policy.require_special,
+            require_digit: securitySettings.password_policy.require_digit,
+            require_uppercase: securitySettings.password_policy.require_uppercase,
+            require_lowercase: securitySettings.password_policy.require_lowercase,
+            require_numbers: securitySettings.password_policy.require_numbers
+          },
+          login_attempts: securitySettings.login_attempts,
+          session_timeout: securitySettings.session_timeout,
+          require_email_confirmation: securitySettings.require_email_confirmation
+        },
+        privacy: {
+          pir_enabled: privacySettings.pir_enabled,
+          pir_batch_size: privacySettings.pir_batch_size,
+          default_record_visibility: privacySettings.default_record_visibility
+        },
+        registration: {
+          registration_enabled: registrationSettings.registration_enabled,
+          require_email_confirmation: registrationSettings.require_email_confirmation,
+          allow_researcher_registration: registrationSettings.allow_researcher_registration
+        },
+        system: {
+          debug_mode: systemConfig.debug_mode,
+          upload_limit: systemConfig.upload_limit,
+          maintenance_mode: systemConfig.maintenance_mode,
+          max_export_size: systemConfig.max_export_size
+        },
+        notifications: {
+          email_notifications: notificationSettings.email_notifications,
+          system_notifications: notificationSettings.system_notifications,
+          notification_types: [...notificationSettings.notification_types]
+        }
       };
       
       hasChanges.value = false;
@@ -494,15 +563,50 @@ const onSettingChange = () => {
   if (!initialSettings.value) return;
   
   const currentSettings = {
-    security: securitySettings,
-    privacy: privacySettings,
-    registration: registrationSettings,
-    system: systemConfig,
-    notifications: notificationSettings
+    security: {
+      password_policy: {
+        min_length: securitySettings.password_policy.min_length,
+        require_special: securitySettings.password_policy.require_special,
+        require_digit: securitySettings.password_policy.require_digit,
+        require_uppercase: securitySettings.password_policy.require_uppercase,
+        require_lowercase: securitySettings.password_policy.require_lowercase,
+        require_numbers: securitySettings.password_policy.require_numbers
+      },
+      login_attempts: securitySettings.login_attempts,
+      session_timeout: securitySettings.session_timeout,
+      require_email_confirmation: securitySettings.require_email_confirmation
+    },
+    privacy: {
+      pir_enabled: privacySettings.pir_enabled,
+      pir_batch_size: privacySettings.pir_batch_size,
+      default_record_visibility: privacySettings.default_record_visibility
+    },
+    registration: {
+      registration_enabled: registrationSettings.registration_enabled,
+      require_email_confirmation: registrationSettings.require_email_confirmation,
+      allow_researcher_registration: registrationSettings.allow_researcher_registration
+    },
+    system: {
+      debug_mode: systemConfig.debug_mode,
+      upload_limit: systemConfig.upload_limit,
+      maintenance_mode: systemConfig.maintenance_mode,
+      max_export_size: systemConfig.max_export_size
+    },
+    notifications: {
+      email_notifications: notificationSettings.email_notifications,
+      system_notifications: notificationSettings.system_notifications,
+      notification_types: [...notificationSettings.notification_types]
+    }
   };
   
-  // 简单比较，实际项目中可能需要更深入的比较
-  hasChanges.value = JSON.stringify(initialSettings.value) !== JSON.stringify(currentSettings);
+  // 比较每个具体的设置值
+  const securityChanged = JSON.stringify(initialSettings.value.security) !== JSON.stringify(currentSettings.security);
+  const privacyChanged = JSON.stringify(initialSettings.value.privacy) !== JSON.stringify(currentSettings.privacy);
+  const registrationChanged = JSON.stringify(initialSettings.value.registration) !== JSON.stringify(currentSettings.registration);
+  const systemChanged = JSON.stringify(initialSettings.value.system) !== JSON.stringify(currentSettings.system);
+  const notificationsChanged = JSON.stringify(initialSettings.value.notifications) !== JSON.stringify(currentSettings.notifications);
+  
+  hasChanges.value = securityChanged || privacyChanged || registrationChanged || systemChanged || notificationsChanged;
 };
 
 // 处理上传限制变更
