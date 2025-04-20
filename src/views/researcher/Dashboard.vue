@@ -36,6 +36,10 @@
           <template #icon><fund-outlined /></template>
           <span>隐私查询</span> 
         </a-menu-item>
+        <a-menu-item key="experiment">
+          <template #icon><fund-outlined /></template>
+          <span>PIR实验</span>
+        </a-menu-item>
       </a-menu>
     </a-layout-sider>
     
@@ -236,6 +240,8 @@ const currentPageTitle = computed(() => {
     return '个人设置';
   } else if (path.includes('/researcher/pir')) {
     return '隐私查询';
+  } else if (path.includes('/researcher/experiment')) {
+    return 'PIR实验';
   }
   
   return '工作台';
@@ -263,6 +269,9 @@ const handleMenuSelect = ({ key }: { key: string }) => {
       break;
     case 'pir':
       router.push('/researcher/pir');
+      break;
+    case 'experiment':
+      router.push('/researcher/experiment');
       break;
   }
 };
@@ -374,6 +383,8 @@ const setInitialSelectedKey = () => {
     selectedKeys.value = ['profile'];
   } else if (path.includes('/researcher/pir')) {
     selectedKeys.value = ['pir'];
+  } else if (path.includes('/researcher/experiment')) {
+    selectedKeys.value = ['experiment'];
   }
 };
 

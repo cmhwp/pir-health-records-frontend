@@ -17,7 +17,18 @@ import type {
   BatchPIRQueryResponse,
   AggregateHealthStatsRequest,
   AggregateHealthStatsResponse,
-  ProjectStatisticsResponse
+  ProjectStatisticsResponse,
+  GenerateMockDataRequest,
+  GenerateMockDataResponse,
+  ConfigureProtocolRequest,
+  ConfigureProtocolResponse,
+  ExecuteQueryRequest,
+  ExecuteQueryResponse,
+  PerformanceMetricsResponse,
+  CompareProtocolsRequest,
+  CompareProtocolsResponse,
+  ExperimentsListResponse,
+  ExperimentDetailResponse
 } from '@/types/researcher';
 import type { HealthRecord } from '@/types/health';
 
@@ -200,4 +211,76 @@ export const getPIRDecryptKey = async (
   recordId: string
 ): Promise<ApiResponse<any>> => {
   return request.get(`${API_PATH}/pir/decrypt-key/${recordId}`);
+};
+
+/**
+ * 生成模拟健康数据
+ */
+export const generateMockData = async (
+  data: GenerateMockDataRequest
+): Promise<ApiResponse<GenerateMockDataResponse>> => {
+  return request.post(`${API_PATH}/experiment/generate-mock-data`, data);
+};
+
+/**
+ * 配置PIR协议参数
+ */
+export const configureProtocol = async (
+  data: ConfigureProtocolRequest
+): Promise<ApiResponse<ConfigureProtocolResponse>> => {
+  return request.post(`${API_PATH}/experiment/configure-protocol`, data);
+};
+
+/**
+ * 执行隐私查询测试
+ */
+export const executeQueryExperiment = async (
+  data: ExecuteQueryRequest
+): Promise<ApiResponse<ExecuteQueryResponse>> => {
+  return request.post(`${API_PATH}/experiment/execute-query`, data);
+};
+
+/**
+ * 获取性能指标
+ */
+export const getPerformanceMetrics = async (
+  experimentId: string
+): Promise<ApiResponse<PerformanceMetricsResponse>> => {
+  return request.get(`${API_PATH}/experiment/performance-metrics`, {
+    params: { experiment_id: experimentId }
+  });
+};
+
+/**
+ * 比较多个协议性能
+ */
+export const compareProtocols = async (
+  data: CompareProtocolsRequest
+): Promise<ApiResponse<CompareProtocolsResponse>> => {
+  return request.post(`${API_PATH}/experiment/compare-protocols`, data);
+};
+
+/**
+ * 获取实验列表
+ */
+export const getExperiments = async (): Promise<ApiResponse<ExperimentsListResponse>> => {
+  return request.get(`${API_PATH}/experiments`);
+};
+
+/**
+ * 获取实验详情
+ */
+export const getExperimentDetails = async (
+  experimentId: string
+): Promise<ApiResponse<ExperimentDetailResponse>> => {
+  return request.get(`${API_PATH}/experiments/${experimentId}`);
+};
+
+/**
+ * 删除实验
+ */
+export const deleteExperiment = async (
+  experimentId: string
+): Promise<ApiResponse<{ experiment_id: string }>> => {
+  return request.delete(`${API_PATH}/experiments/${experimentId}`);
 }; 

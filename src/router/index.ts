@@ -151,18 +151,6 @@ const routes: Array<RouteRecordRaw> = [
         meta: { requiresAuth: true, role: 'doctor', title: '隐私保护查询' }
       },
       {
-        path: 'patient-statistics',
-        name: 'PatientStatistics',
-        component: () => import('@/components/doctor/PatientStatisticsContent.vue'),
-        meta: { requiresAuth: true, role: 'doctor', title: '患者统计' }
-      },
-      {
-        path: 'disease-statistics',
-        name: 'DiseaseStatistics',
-        component: () => import('@/components/doctor/DiseaseStatisticsContent.vue'),
-        meta: { requiresAuth: true, role: 'doctor', title: '疾病统计' }
-      },
-      {
         path: 'profile',
         name: 'DoctorProfile',
         component: () => import('@/views/auth/Profile.vue'),
@@ -218,6 +206,12 @@ const routes: Array<RouteRecordRaw> = [
         name: 'ResearcherPIR',
         component: () => import('@/components/researcher/PirQueryContent.vue'),
         meta: { requiresAuth: true, role: 'researcher', title: '隐私查询' }
+      },
+      {
+        path: 'experiment',
+        name: 'ResearcherExperiment',
+        component: () => import('@/components/researcher/experiment/ExperimentContent.vue'),
+        meta: { requiresAuth: true, role: 'researcher', title: 'PIR实验' }
       },
       {
         path: 'profile',

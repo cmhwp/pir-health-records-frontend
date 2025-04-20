@@ -34,9 +34,12 @@
             <a-space size="small">
               <a @click="viewPatientDetail(record.id)">查看</a>
               <a-divider type="vertical" />
-              <a @click="viewPatientRecords(record.id)">健康记录</a>
-              <a-divider type="vertical" />
-              <a @click="createAppointment(record.id)">预约</a>
+              <template v-if="record.record_count && record.record_count > 0">
+                <a @click="viewPatientRecords(record.id)">健康记录</a>
+              </template>
+              <template v-else>
+                <span class="disabled-link">健康记录</span>
+              </template>
               <a-divider type="vertical" />
               <a @click="createPrescription(record.id)">处方</a>
             </a-space>
@@ -71,7 +74,13 @@
       <template #footer>
         <a-space>
           <a-button @click="patientDrawerVisible = false">关闭</a-button>
-          <a-button type="primary" @click="selectedPatient && viewPatientRecords(selectedPatient.id)">查看健康记录</a-button>
+          <a-button 
+            type="primary" 
+            @click="selectedPatient && viewPatientRecords(selectedPatient.id)"
+            :disabled="!selectedPatient || !selectedPatient.record_count || selectedPatient.record_count === 0"
+          >
+            查看健康记录
+          </a-button>
         </a-space>
       </template>
     </a-drawer>
@@ -241,12 +250,6 @@ const viewPatientRecords = (patientId: number) => {
   if (!patientId) return;
   router.push(`/doctor/records?patient_id=${patientId}`);
 };
-
-// 创建预约
-const createAppointment = (patientId: number) => {
-  router.push(`/doctor/appointments?action=create&patient_id=${patientId}`);
-};
-
 // 创建处方
 const createPrescription = (patientId: number) => {
   router.push(`/doctor/prescriptions?action=create&patient_id=${patientId}`);
@@ -272,5 +275,10 @@ onMounted(() => {
 
 .page-header h1 {
   margin-bottom: 0;
+}
+
+.disabled-link {
+  color: #d9d9d9;
+  cursor: not-allowed;
 }
 </style> 

@@ -23,10 +23,6 @@
           <team-outlined />
           <span>患者管理</span>
         </a-menu-item>
-        <a-menu-item key="appointments">
-          <calendar-outlined />
-          <span>预约管理</span>
-        </a-menu-item>
         <a-menu-item key="prescriptions">
           <medicine-box-outlined />
           <span>处方管理</span>
@@ -35,20 +31,14 @@
           <file-text-outlined />
           <span>医疗记录</span>
         </a-menu-item>
+        <a-menu-item key="shared-with-me">
+          <team-outlined />
+          <span>共享记录</span>
+        </a-menu-item>
         <a-menu-item key="pir">
           <safety-outlined />
-          <span>隐私保护查询</span>
+          <span>隐私保护查询</span> 
         </a-menu-item>
-        <a-sub-menu key="statistics">
-          <template #title>
-            <span>
-              <bar-chart-outlined />
-              <span>统计分析</span>
-            </span>
-          </template>
-          <a-menu-item key="patient-statistics">患者统计</a-menu-item>
-          <a-menu-item key="disease-statistics">疾病统计</a-menu-item>
-        </a-sub-menu>
       </a-menu>
     </a-layout-sider>
     
@@ -238,18 +228,14 @@ const currentPageTitle = computed(() => {
     return '工作台';
   } else if (path.includes('/doctor/patients')) {
     return '患者管理';
-  } else if (path.includes('/doctor/appointments')) {
-    return '预约管理';
   } else if (path.includes('/doctor/prescriptions')) {
     return '处方管理';
   } else if (path.includes('/doctor/records')) {
     return '医疗记录';
-  } else if (path.includes('/doctor/pir')) {
+  } else if (path.includes('/doctor/shared-with-me')) {
+    return '共享记录';
+  } else if (path.includes('/doctor/pir')) {  
     return '隐私保护查询';
-  } else if (path.includes('/doctor/patient-statistics')) {
-    return '患者统计';
-  } else if (path.includes('/doctor/disease-statistics')) {
-    return '疾病统计';
   } else if (path.includes('/doctor/profile')) {
     return '个人设置';
   }
@@ -370,18 +356,14 @@ const setInitialSelectedKey = () => {
     selectedKeys.value = ['dashboard'];
   } else if (path.includes('/doctor/patients')) {
     selectedKeys.value = ['patients'];
-  } else if (path.includes('/doctor/appointments')) {
-    selectedKeys.value = ['appointments'];
   } else if (path.includes('/doctor/prescriptions')) {
     selectedKeys.value = ['prescriptions'];
   } else if (path.includes('/doctor/records')) {
     selectedKeys.value = ['records'];
+  } else if (path.includes('/doctor/shared-with-me')) {
+    selectedKeys.value = ['shared-with-me'];
   } else if (path.includes('/doctor/pir')) {
     selectedKeys.value = ['pir'];
-  } else if (path.includes('/doctor/patient-statistics')) {
-    selectedKeys.value = ['patient-statistics'];
-  } else if (path.includes('/doctor/disease-statistics')) {
-    selectedKeys.value = ['disease-statistics'];
   } else if (path.includes('/doctor/profile')) {
     selectedKeys.value = ['profile'];
   }

@@ -306,5 +306,150 @@ export interface ProjectStatisticsResponse {
     month: string;
     count: number;
   }>;
+}
+
+// PIR协议类型枚举
+export enum PIRProtocolType {
+  BASIC = 'basic',
+  HOMOMORPHIC = 'homomorphic',
+  HYBRID = 'hybrid',
+  ONION = 'onion'
+}
+
+// PIR性能指标枚举
+export enum PIRPerformanceMetric {
+  QUERY_TIME = 'query_time',
+  ACCURACY = 'accuracy',
+  COMM_COST = 'comm_cost',
+  SERVER_LOAD = 'server_load',
+  CLIENT_LOAD = 'client_load',
+  PRIVACY_LEVEL = 'privacy_level'
+}
+
+// 生成模拟数据请求参数
+export interface GenerateMockDataRequest {
+  count?: number;
+  structured?: boolean;
+  record_types?: string[];
+}
+
+// 生成模拟数据响应
+export interface GenerateMockDataResponse {
+  experiment_id: string;
+  data_count: number;
+  sample: any[];
+}
+
+// 配置协议请求参数
+export interface ConfigureProtocolRequest {
+  experiment_id: string;
+  protocol_type: PIRProtocolType;
+  params?: Record<string, any>;
+}
+
+// 配置协议响应
+export interface ConfigureProtocolResponse {
+  experiment_id: string;
+  protocol_type: PIRProtocolType;
+  protocol_config: Record<string, any>;
+}
+
+// 执行查询请求参数
+export interface ExecuteQueryRequest {
+  experiment_id: string;
+  query_count?: number;
+}
+
+// 执行查询响应
+export interface ExecuteQueryResponse {
+  experiment_id: string;
+  query_count: number;
+  results: {
+    results: any[];
+    metrics: Record<string, any>;
+    protocol: Record<string, any>;
+  };
+}
+
+// 性能指标响应
+export interface PerformanceMetricsResponse {
+  experiment_id: string;
+  protocol: Record<string, any>;
+  metrics: Record<PIRPerformanceMetric | string, any>;
+  timestamp: string;
+}
+
+// 比较协议请求参数
+export interface CompareProtocolsRequest {
+  experiment_ids: string[];
+}
+
+// 协议比较项
+export interface ProtocolComparison {
+  experiment_id: string;
+  protocol_type: PIRProtocolType;
+  metrics: Record<string, any>;
+  timestamp?: string;
+}
+
+// 比较报告项
+export interface ComparisonReport {
+  baseline: {
+    experiment_id: string;
+    protocol_type: PIRProtocolType;
+  };
+  current: {
+    experiment_id: string;
+    protocol_type: PIRProtocolType;
+  };
+  report: {
+    summary: Record<string, any>;
+    comparisons: Record<string, any>;
+    recommendations: string[];
+  };
+}
+
+// 比较协议响应
+export interface CompareProtocolsResponse {
+  protocols: ProtocolComparison[];
+  comparisons: ComparisonReport[];
+}
+
+// 实验列表项
+export interface ExperimentListItem {
+  id: string;
+  experiment_type: string;
+  created_at: string;
+  updated_at?: string;
+  data_count: number;
+  protocol_type?: PIRProtocolType;
+  has_results: boolean;
+  query_time?: string;
+  metrics_summary?: {
+    query_time?: number;
+    privacy_level?: number;
+  };
+}
+
+// 实验列表响应
+export interface ExperimentsListResponse {
+  experiments: ExperimentListItem[];
+}
+
+// 实验详情响应
+export interface ExperimentDetailResponse {
+  id: string;
+  experiment_type: string;
+  created_at: string;
+  updated_at?: string;
+  parameters: Record<string, any>;
+  data_count: number;
+  protocol_config?: Record<string, any>;
+  query_time?: string;
+  results?: {
+    metrics: Record<string, any>;
+    sample_results: any[];
+  };
+  data_samples?: any[];
 } 
 
