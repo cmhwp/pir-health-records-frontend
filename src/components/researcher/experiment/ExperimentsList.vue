@@ -23,7 +23,7 @@
           <!-- 协议类型列 -->
           <template v-if="column.key === 'protocol_type'">
             <a-tag v-if="record.protocol_type" :color="getProtocolColor(record.protocol_type)">
-              {{ record.protocol_type }}
+              {{ PIR_TYPE_MAP[record.protocol_type as keyof typeof PIR_TYPE_MAP] }}
             </a-tag>
             <span v-else>未配置</span>
           </template>
@@ -67,6 +67,7 @@ import { defineProps, defineEmits } from 'vue';
 import type { TableColumnsType } from 'ant-design-vue';
 import dayjs from 'dayjs';
 import { PIRProtocolType } from '@/types/researcher';
+import { PIR_TYPE_MAP } from '@/constants/researcher';
 import type { ExperimentListItem } from '@/types/researcher';
 
 const props = defineProps<{

@@ -13,12 +13,12 @@
         <a-input-number
           v-model:value="formState.query_count"
           :min="1"
-          :max="50"
+          :max="1000"
           :step="1"
           style="width: 100%"
           placeholder="设置要执行的查询次数"
         />
-        <div class="form-help-text">设置1-50之间的值，数值越大测试越全面，但执行时间也越长</div>
+        <div class="form-help-text">设置1-1000之间的值，数值越大测试越全面，但执行时间也越长</div>
       </a-form-item>
       
       <a-alert
@@ -71,7 +71,7 @@ const formState = ref<ExecuteQueryRequest>({
 const rules: Record<string, Rule[]> = {
   query_count: [
     { required: true, message: '请输入查询次数' },
-    { type: 'number', min: 1, max: 50, message: '查询次数应在1-50之间' }
+    { type: 'number', min: 1, max: 1000, message: '查询次数应在1-1000之间' }
   ]
 };
 

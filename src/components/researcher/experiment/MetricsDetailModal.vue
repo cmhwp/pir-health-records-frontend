@@ -246,6 +246,9 @@ const formatMetricValue = (metricName: string, value: any) => {
   if (metricName === PIRPerformanceMetric.QUERY_TIME) {
     return parseFloat(String(value)).toFixed(3);
   }
+  if (metricName === PIRPerformanceMetric.SERVER_LOAD || metricName === PIRPerformanceMetric.CLIENT_LOAD) {
+    return (parseFloat(String(value)) * 100).toFixed(2);
+  }
   return value;
 };
 

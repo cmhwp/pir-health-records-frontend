@@ -18,3 +18,9 @@ export const TEAM_STATUS = {
     ACTIVE: "活跃",
     INACTIVE: "非活跃"
 }
+export const PIR_TYPE_MAP = {
+    "basic": "基础PIR",
+    "homomorphic": "同态PIR",
+    "hybrid": "混合PIR",
+    "onion": "洋葱PIR"
+}   

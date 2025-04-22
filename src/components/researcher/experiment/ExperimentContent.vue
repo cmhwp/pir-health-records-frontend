@@ -75,6 +75,7 @@ import ExperimentsList from './ExperimentsList.vue';
 import ExperimentDetails from './ExperimentDetails.vue';
 import ProtocolComparison from './ProtocolComparison.vue';
 import GenerateMockDataModal from './GenerateMockDataModal.vue';
+import { PIR_TYPE_MAP } from '@/constants/researcher';
 
 const router = useRouter();
 const route = useRoute();

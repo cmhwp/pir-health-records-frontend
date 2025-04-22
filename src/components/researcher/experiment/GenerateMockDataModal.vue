@@ -13,14 +13,14 @@
         <a-slider
           v-model:value="formState.count"
           :min="10"
-          :max="1000"
+          :max="100000"
           :step="10"
           :marks="{
-            10: '10',
-            250: '250',
-            500: '500',
-            750: '750',
-            1000: '1000'
+            10000: '10000',
+            25000: '25000',
+            50000: '50000',
+            75000: '75000',
+            100000: '100000'
           }"
         />
         <a-input-number
@@ -56,6 +56,7 @@
         type="info"
         style="margin-bottom: 16px;"
         message="生成的模拟数据将用于PIR协议实验，不含真实患者信息"
+        description="系统将使用AES-GCM-256算法对标记为加密的记录进行加密处理，并同时保存明文版本和加密版本，便于研究比较。"
       />
     </a-form>
   </a-modal>
@@ -97,7 +98,7 @@ const formState = ref<GenerateMockDataRequest>({
 const rules: Record<string, Rule[]> = {
   count: [
     { required: true, message: '请输入生成数据量' },
-    { type: 'number', min: 10, max: 1000, message: '数据量应在10-1000之间' }
+    { type: 'number', min: 10, max: 100000, message: '数据量应在10-100000之间' }
   ],
   structured: [
     { required: true, message: '请选择数据结构类型' }
@@ -139,7 +140,7 @@ const handleGenerate = async () => {
     
     loading.value = true;
     const response = await generateMockData(formState.value);
-    
+    console.log(response);
     if (response.success) {
       message.success('模拟健康数据生成成功');
       modalVisible.value = false;

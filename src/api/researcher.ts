@@ -28,7 +28,11 @@ import type {
   CompareProtocolsRequest,
   CompareProtocolsResponse,
   ExperimentsListResponse,
-  ExperimentDetailResponse
+  ExperimentDetailResponse,
+  DecryptExperimentResultRequest,
+  DecryptExperimentResultResponse,
+  DecryptStructuredRecordRequest,
+  DecryptStructuredRecordResponse
 } from '@/types/researcher';
 import type { HealthRecord } from '@/types/health';
 
@@ -283,4 +287,22 @@ export const deleteExperiment = async (
   experimentId: string
 ): Promise<ApiResponse<{ experiment_id: string }>> => {
   return request.delete(`${API_PATH}/experiments/${experimentId}`);
+};
+
+/**
+ * 解密实验查询结果
+ */
+export const decryptExperimentResult = async (
+  data: DecryptExperimentResultRequest
+): Promise<ApiResponse<DecryptExperimentResultResponse>> => {
+  return request.post(`${API_PATH}/experiment/decrypt-result`, data);
+};
+
+/**
+ * 解密结构化健康记录
+ */
+export const decryptStructuredRecord = async (
+  data: DecryptStructuredRecordRequest
+): Promise<ApiResponse<DecryptStructuredRecordResponse>> => {
+  return request.post(`${API_PATH}/experiment/decrypt-record`, data);
 }; 

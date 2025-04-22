@@ -337,7 +337,35 @@ export interface GenerateMockDataRequest {
 export interface GenerateMockDataResponse {
   experiment_id: string;
   data_count: number;
-  sample: any[];
+  sample: {
+    encrypted: Array<{
+      _id: string;
+      patient_id: number;
+      doctor_id: number;
+      record_type: string;
+      is_encrypted: boolean;
+      encrypted_data: {
+        ciphertext: string;
+        iv: string;
+        tag: string;
+        aad: string;
+      };
+      key_salt: string;
+      encryption_algorithm: string;
+      encryption_date: string;
+      integrity_hash: string;
+    }>;
+    plaintext: Array<{
+      _id: string;
+      patient_id: number;
+      doctor_id: number;
+      record_type: string;
+      title: string;
+      description: string;
+      [key: string]: any;
+      is_encrypted: boolean;
+    }>;
+  };
 }
 
 // 配置协议请求参数
@@ -436,6 +464,25 @@ export interface ExperimentsListResponse {
   experiments: ExperimentListItem[];
 }
 
+// 实验查询样本结果项
+export interface ExperimentSampleResult {
+  target_index: number;
+  result: number[];
+  original_data: {
+    _id: { $oid: string };
+    patient_id: number;
+    is_encrypted: boolean;
+    [key: string]: any;
+  };
+  query_time: number;
+  comm_cost: number;
+  accuracy: number;
+  privacy_level: number;
+  needs_decrypt?: boolean;
+  result_index: number;
+  decrypt_api?: string;
+}
+
 // 实验详情响应
 export interface ExperimentDetailResponse {
   id: string;
@@ -448,8 +495,116 @@ export interface ExperimentDetailResponse {
   query_time?: string;
   results?: {
     metrics: Record<string, any>;
-    sample_results: any[];
+    sample_results: ExperimentSampleResult[];
   };
-  data_samples?: any[];
+  data_samples?: any[] | {
+    encrypted: Array<{
+      _id: string;
+      patient_id: number;
+      doctor_id: number;
+      record_type: string;
+      is_encrypted: boolean;
+      encrypted_data: {
+        ciphertext: string;
+        iv: string;
+        tag: string;
+        aad: string;
+      };
+      key_salt: string;
+      encryption_algorithm: string;
+      encryption_date: string;
+      integrity_hash: string;
+    }>;
+    plaintext: Array<{
+      _id: string;
+      patient_id: number;
+      doctor_id: number;
+      record_type: string;
+      title: string;
+      description: string;
+      [key: string]: any;
+      is_encrypted: boolean;
+    }>;
+  };
+  plaintext_samples?: Array<{
+    _id: string;
+    patient_id: number;
+    doctor_id: number;
+    record_type: string;
+    title: string;
+    description: string;
+    [key: string]: any;
+    is_encrypted: boolean;
+  }>;
+  data_comparison?: {
+    encrypted_example: any;
+    plaintext_example: any;
+    explanation: string;
+  };
+  protocol_explanation?: {
+    protocol_type: PIRProtocolType;
+    description: string;
+    parameter_descriptions: Record<string, string>;
+  };
+}
+
+// 解密实验查询结果请求
+export interface DecryptExperimentResultRequest {
+  experiment_id: string;
+  result_index: number;
+  encrypted_data: number[];
+}
+
+// 解密实验查询结果响应
+export interface DecryptExperimentResultResponse {
+  decrypted_data: number[];
+  original_data: {
+    target_index: number;
+    result: number[];
+    query_time: number;
+    original_data: {
+      _id: { $oid: string };
+      patient_id: number;
+      is_encrypted: boolean;
+      [key: string]: any;
+    };
+  };
+  plaintext_data: {
+    _id: { $oid: string };
+    patient_id: number;
+    doctor_id: number;
+    record_type: string;
+    [key: string]: any;
+  };
+  protocol_type: PIRProtocolType;
+}
+
+// 解密结构化健康记录请求
+export interface DecryptStructuredRecordRequest {
+  encrypted_record: {
+    encrypted_data: {
+      ciphertext: string;
+      iv: string;
+      tag: string;
+      aad: string;
+    };
+    key_salt: string;
+    encryption_algorithm: string;
+    integrity_hash?: string;
+    [key: string]: any;
+  };
+  decryption_key?: string;
+}
+
+// 解密结构化健康记录响应
+export interface DecryptStructuredRecordResponse {
+  decrypted_record: {
+    [key: string]: any;
+  };
+  metadata: {
+    decryption_time?: number;
+    algorithm?: string;
+    [key: string]: any;
+  };
 } 
 

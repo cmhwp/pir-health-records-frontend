@@ -34,7 +34,7 @@
                   <!-- 协议类型列 -->
                   <template v-if="column.key === 'protocol_type'">
                     <a-tag v-if="record.protocol_type" :color="getProtocolColor(record.protocol_type)">
-                      {{ record.protocol_type }}
+                      {{ PIR_TYPE_MAP[record.protocol_type as keyof typeof PIR_TYPE_MAP] }}
                     </a-tag>
                     <span v-else>未配置</span>
                   </template>
@@ -189,7 +189,7 @@ import { BarChartOutlined } from '@ant-design/icons-vue';
 import { compareProtocols } from '@/api/researcher';
 import { PIRProtocolType } from '@/types/researcher';
 import type { ExperimentListItem, CompareProtocolsResponse } from '@/types/researcher';
-
+import { PIR_TYPE_MAP } from '@/constants/researcher';
 const props = defineProps<{
   experiments: ExperimentListItem[];
 }>();
