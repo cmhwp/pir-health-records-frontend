@@ -743,8 +743,6 @@ const getVisibilityName = (visibility: string): string => {
 const getPermissionName = (permission: string): string => {
   const permissionMap: Record<string, string> = {
     view: '仅查看',
-    edit: '可编辑',
-    full: '完全权限'
   };
   return permissionMap[permission] || '未知权限';
 };

@@ -212,8 +212,6 @@
               <a-form-item label="共享权限">
                 <a-radio-group v-model:value="shareForm.permission">
                   <a-radio :value="SharePermission.VIEW">仅查看</a-radio>
-                  <a-radio :value="SharePermission.EDIT">可编辑</a-radio>
-                  <a-radio :value="SharePermission.FULL">完全权限</a-radio>
                 </a-radio-group>
               </a-form-item>
               
@@ -238,40 +236,66 @@
             <a-divider />
 
             <h3>已共享记录</h3>
-            <a-list v-if="sharedRecords.length > 0" :loading="loadingShared">
-              <a-list-item v-for="shared in sharedRecords" :key="shared.shared_id">
-                <a-list-item-meta>
-                  <template #title>
+            <a-spin :spinning="loadingShared">
+              <a-table
+                v-if="sharedRecords.length > 0"
+                :dataSource="sharedRecords"
+                style="margin-top: 16px"
+                :pagination="{ pageSize: 5 }"
+                size="middle"
+                bordered
+                rowKey="shared_id"
+              >
+                <a-table-column title="共享给" dataIndex="shared_with" key="shared_with">
+                  <template #default="{ record }">
                     <div style="display: flex; align-items: center">
                       <a-avatar style="margin-right: 8px" :style="{ backgroundColor: '#1890ff' }">
-                        {{ shared.shared_with?.username?.charAt(0) || '?' }}
+                        {{ record.shared_with?.username?.charAt(0) || '?' }}
                       </a-avatar>
-                      {{ shared.shared_with?.full_name || shared.shared_with?.username || '未知用户' }}
+                      {{ record.shared_with?.full_name || record.shared_with?.username || '未知用户' }}
                     </div>
                   </template>
-                  <template #description>
+                </a-table-column>
+                <a-table-column title="记录信息" dataIndex="record_info" key="record_info">
+                  <template #default="{ record }">
                     <div>
-                      权限: <a-tag :color="getPermissionColor(shared.permission)">{{ getPermissionName(shared.permission) }}</a-tag>
-                      <br />
-                      状态: <a-tag :color="shared.is_valid ? 'success' : 'error'">{{ shared.is_valid ? '有效' : '已过期' }}</a-tag>
-                      <br />
-                      有效期: {{ formatValidity(shared.expires_at) }}
-                      <br />
-                      访问次数: {{ shared.access_count }} 次
-                      <br />
-                      最近访问: {{ shared.last_accessed ? formatDate(shared.last_accessed) : '未访问' }}
+                      <div>{{ record.record_info?.title }}</div>
+                      <a-tag size="small" :color="getRecordTypeColor(record.record_info?.record_type)">{{ getRecordTypeName(record.record_info?.record_type) }}</a-tag>
                     </div>
                   </template>
-                </a-list-item-meta>
-                <template #actions>
-                  <a-button danger size="small" @click="revokeShare(shared.shared_id)">
-                    <template #icon><stop-outlined /></template>
-                    撤销共享
-                  </a-button>
-                </template>
-              </a-list-item>
-            </a-list>
-            <a-empty v-else description="尚未共享此记录" />
+                </a-table-column>
+                <a-table-column title="权限" dataIndex="permission" key="permission" :width="100">
+                  <template #default="{ record }">
+                    <a-tag :color="getPermissionColor(record.permission)">{{ getPermissionName(record.permission) }}</a-tag>
+                  </template>
+                </a-table-column>
+                <a-table-column title="状态" dataIndex="is_valid" key="is_valid" :width="100">
+                  <template #default="{ record }">
+                    <a-tag :color="record.is_valid ? 'success' : 'error'">{{ record.is_valid ? '有效' : '已过期' }}</a-tag>
+                  </template>
+                </a-table-column>
+                <a-table-column title="有效期" dataIndex="expires_at" key="expires_at" :width="120">
+                  <template #default="{ record }">
+                    {{ formatValidity(record.expires_at) }}
+                  </template>
+                </a-table-column>
+                <a-table-column title="访问次数" dataIndex="access_count" key="access_count" :width="100" />
+                <a-table-column title="最近访问" dataIndex="last_accessed" key="last_accessed" :width="160">
+                  <template #default="{ record }">
+                    {{ record.last_accessed ? formatDate(record.last_accessed) : '未访问' }}
+                  </template>
+                </a-table-column>
+                <a-table-column title="操作" key="action" :width="120">
+                  <template #default="{ record }">
+                    <a-button danger size="small" @click="revokeShare(record.shared_id)">
+                      <template #icon><stop-outlined /></template>
+                      撤销共享
+                    </a-button>
+                  </template>
+                </a-table-column>
+              </a-table>
+              <a-empty v-else description="尚未共享此记录" />
+            </a-spin>
           </a-card>
         </a-tab-pane>
       </a-tabs>
@@ -562,6 +586,14 @@ import {
 } from '@/types/health';
 import type { ShareableUser } from '@/types/health';
 import { useRecordTypes } from '@/hooks/useRecordTypes';
+// 本地定义RecordVersion接口
+interface RecordVersion {
+  version: number;
+  created_at: string;
+  description?: string;
+  created_by: string;
+  changes?: string[];
+}
 
 const route = useRoute();
 const router = useRouter();
@@ -577,10 +609,14 @@ onMounted(() => {
   }
 });
 
-// 记录数据
-const loading = ref(true);
+// 状态变量
+const loading = ref(false);
+const loadingUsers = ref(false);
+const loadingShared = ref(false);
+const sharing = ref(false);
 const record = ref<HealthRecord | null>(null);
-const sqlId = ref<number | null>(null);
+const versions = ref<RecordVersion[]>([]);
+const sharedRecords = ref<any[]>([]);
 
 // 记录标签
 const recordTags = computed(() => {
@@ -597,7 +633,6 @@ const recordTags = computed(() => {
 });
 
 // 版本历史
-const versions = ref<VersionInfo[]>([]);
 const loadingVersions = ref(false);
 const restoreModalVisible = ref(false);
 const restoring = ref(false);
@@ -605,11 +640,7 @@ const versionToRestore = ref<number>(0);
 const restoreDescription = ref('');
 
 // 共享相关
-const loadingUsers = ref(false);
-const loadingShared = ref(false);
 const userOptions = ref<ShareableUser[]>([]);
-const sharedRecords = ref<SharedRecordWithUser[]>([]);
-const sharing = ref(false);
 const shareForm = reactive({
   share_with_id: undefined as number | undefined,
   permission: SharePermission.VIEW,
@@ -649,7 +680,6 @@ const fetchRecordDetail = async () => {
     const response = await getHealthRecord(recordId.value);
     if (response.success && response.data) {
       record.value = response.data.record;
-      sqlId.value = response.data.sql_id;
     } else {
       message.error(response.message || '获取健康记录失败');
     }
@@ -770,16 +800,19 @@ const fetchUsers = async () => {
 const fetchSharedRecords = async () => {
   if (!recordId.value) return;
   
-  loadingShared.value = true;
   try {
+    loadingShared.value = true;
     const response = await getRecordsSharedByMe(1, 100, false);
+    console.log('获取共享记录API响应:', response);
     if (response.success && response.data) {
-      // 过滤出当前记录的共享记录
-      const allShared = response.data.shared_records as SharedRecordWithUser[];
-      sharedRecords.value = allShared.filter(s => 
-        s.record_id.toString() === recordId.value || 
-        s.mongo_id === recordId.value
-      );
+      // 获取全部共享记录
+      sharedRecords.value = response.data.shared_records || [];
+      
+      // 如果我们需要根据当前记录ID过滤，可以取消下面的注释
+      // sharedRecords.value = (response.data.shared_records || []).filter(s => 
+      //   s.record_id.toString() === recordId.value || 
+      //   (s.mongo_id && s.mongo_id === recordId.value)
+      // );
     } else {
       message.error(response.message || '获取共享记录失败');
     }
@@ -900,9 +933,7 @@ const getVisibilityName = (visibility: string): string => {
 // 获取权限名称
 const getPermissionName = (permission: string): string => {
   const permissionMap: Record<string, string> = {
-    view: '仅查看',
-    edit: '可编辑',
-    full: '完全权限'
+    view: '仅查看'
   };
   return permissionMap[permission] || '未知权限';
 };
@@ -1007,28 +1038,29 @@ const compareVersions = async (baseVersion: number, compareVersion: number) => {
 // 表格列定义
 const vitalSignColumns = [
   {
-    title: '类型',
+    title: '测量类型',
     dataIndex: 'type',
     key: 'type',
-    width: '25%'
   },
   {
-    title: '数值',
+    title: '测量值',
     dataIndex: 'value',
     key: 'value',
-    width: '25%'
+  },
+  {
+    title: '单位',
+    dataIndex: 'unit',
+    key: 'unit',
   },
   {
     title: '测量时间',
     dataIndex: 'measured_at',
     key: 'measured_at',
-    width: '30%'
   },
   {
     title: '备注',
     dataIndex: 'notes',
     key: 'notes',
-    width: '20%'
   }
 ];
 
@@ -1065,6 +1097,58 @@ const getVitalSignColor = (type: string): string => {
   };
   return colorMap[type] || 'default';
 };
+
+// 共享记录表格列
+const sharedRecordsColumns = [
+  {
+    title: '共享给',
+    dataIndex: 'shared_with',
+    key: 'shared_with',
+    width: 180,
+  },
+  {
+    title: '记录信息',
+    dataIndex: 'record_info',
+    key: 'record_info',
+    width: 180,
+  },
+  {
+    title: '权限',
+    dataIndex: 'permission',
+    key: 'permission',
+    width: 100,
+  },
+  {
+    title: '状态',
+    dataIndex: 'is_valid',
+    key: 'is_valid',
+    width: 100,
+  },
+  {
+    title: '有效期',
+    dataIndex: 'expires_at',
+    key: 'expires_at',
+    width: 120,
+  },
+  {
+    title: '访问次数',
+    dataIndex: 'access_count',
+    key: 'access_count',
+    width: 100,
+  },
+  {
+    title: '最近访问',
+    dataIndex: 'last_accessed',
+    key: 'last_accessed',
+    width: 160,
+  },
+  {
+    title: '操作',
+    dataIndex: 'actions',
+    key: 'actions',
+    width: 120,
+  }
+];
 </script>
 
 <style scoped>

@@ -146,7 +146,8 @@ export interface DoctorDashboardResponse {
   statistics: {
     today_patients: number;
     total_patients: number;
-    total_records: number;
+    total_visible_records: number;
+    pending_prescriptions: number;
   };
   recent_records: Array<{
     id: number;
@@ -157,6 +158,7 @@ export interface DoctorDashboardResponse {
     record_type: string;
     record_date: string | null;
     created_at: string | null;
+    visibility: string;
   }>;
 }
 
@@ -369,4 +371,67 @@ export interface GetComplianceStatsResponse {
     created_at: string;
     issues: string[];
   }>;
+}
+
+// 获取患者创建的可见记录参数
+export interface GetPatientRecordsParams {
+  page?: number;
+  per_page?: number;
+  patient_id?: number;
+  record_type?: RecordType;
+  start_date?: string;
+  end_date?: string;
+  sort_by?: 'created_at' | 'record_date' | 'title';
+  sort_order?: 'asc' | 'desc';
+}
+
+// 获取患者创建的可见记录响应
+export interface GetPatientRecordsResponse {
+  records: Array<{
+    id: number;
+    mongo_id: string;
+    title: string;
+    record_type: RecordType;
+    record_date: string;
+    created_at: string;
+    updated_at: string;
+    visibility: RecordVisibility;
+    is_encrypted: boolean;
+    patient_id: number;
+    patient_name: string;
+  }>;
+  pagination: {
+    total: number;
+    pages: number;
+    page: number;
+    per_page: number;
+    has_next: boolean;
+    has_prev: boolean;
+  };
+}
+
+// 患者记录详情响应
+export interface PatientRecordDetailResponse {
+  id: number;
+  mongo_id: string;
+  title: string;
+  description?: string;
+  record_type: RecordType;
+  record_date: string;
+  created_at: string;
+  updated_at: string;
+  visibility: RecordVisibility;
+  is_encrypted: boolean;
+  patient_id: number;
+  patient_name: string;
+  version?: number;
+  tags?: string;
+  files?: FileInfo[];
+  data?: any;
+  patient_info?: {
+    gender?: string;
+    date_of_birth?: string;
+    allergies?: string;
+    medical_history?: string;
+  };
 } 

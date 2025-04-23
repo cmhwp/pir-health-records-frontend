@@ -250,7 +250,6 @@
         <a-form-item name="permission" label="分享权限">
           <a-radio-group v-model:value="shareForm.permission">
             <a-radio :value="SharePermission.VIEW">仅查看</a-radio>
-            <a-radio :value="SharePermission.EDIT">可编辑</a-radio>
           </a-radio-group>
         </a-form-item>
 

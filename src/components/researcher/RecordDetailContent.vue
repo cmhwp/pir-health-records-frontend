@@ -106,12 +106,6 @@
                 <span v-else>无生命体征数据</span>
               </a-descriptions-item>
             </template>
-            
-            <template v-else>
-              <a-descriptions-item label="详细内容">
-                <pre class="json-data">{{ JSON.stringify(record.data, null, 2) }}</pre>
-              </a-descriptions-item>
-            </template>
           </a-descriptions>
         </a-card>
 

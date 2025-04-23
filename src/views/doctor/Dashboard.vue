@@ -23,17 +23,13 @@
           <team-outlined />
           <span>患者管理</span>
         </a-menu-item>
-        <a-menu-item key="prescriptions">
-          <medicine-box-outlined />
-          <span>处方管理</span>
-        </a-menu-item>
-        <a-menu-item key="records">
+        <a-menu-item key="patient-records">
           <file-text-outlined />
-          <span>医疗记录</span>
+          <span>患者健康记录</span>
         </a-menu-item>
-        <a-menu-item key="shared-with-me">
-          <team-outlined />
-          <span>共享记录</span>
+        <a-menu-item key="prescriptions">
+          <medicine-box-outlined /> 
+          <span>处方管理</span>
         </a-menu-item>
         <a-menu-item key="pir">
           <safety-outlined />
@@ -230,10 +226,6 @@ const currentPageTitle = computed(() => {
     return '患者管理';
   } else if (path.includes('/doctor/prescriptions')) {
     return '处方管理';
-  } else if (path.includes('/doctor/records')) {
-    return '医疗记录';
-  } else if (path.includes('/doctor/shared-with-me')) {
-    return '共享记录';
   } else if (path.includes('/doctor/pir')) {  
     return '隐私保护查询';
   } else if (path.includes('/doctor/profile')) {
@@ -358,10 +350,6 @@ const setInitialSelectedKey = () => {
     selectedKeys.value = ['patients'];
   } else if (path.includes('/doctor/prescriptions')) {
     selectedKeys.value = ['prescriptions'];
-  } else if (path.includes('/doctor/records')) {
-    selectedKeys.value = ['records'];
-  } else if (path.includes('/doctor/shared-with-me')) {
-    selectedKeys.value = ['shared-with-me'];
   } else if (path.includes('/doctor/pir')) {
     selectedKeys.value = ['pir'];
   } else if (path.includes('/doctor/profile')) {

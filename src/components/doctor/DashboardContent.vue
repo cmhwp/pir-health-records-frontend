@@ -17,24 +17,31 @@
     
     <!-- 统计信息 -->
     <a-row :gutter="16">
-      <a-col :span="8">
+      <a-col :span="6">
         <a-statistic title="今日患者" :value="todayPatients" style="margin-bottom: 16px">
           <template #suffix>
             <user-outlined />
           </template>
         </a-statistic>
       </a-col>
-      <a-col :span="8">
+      <a-col :span="6">
         <a-statistic title="总患者数" :value="totalPatients" style="margin-bottom: 16px">
           <template #suffix>
             <team-outlined />
           </template>
         </a-statistic>
       </a-col>
-      <a-col :span="8">
-        <a-statistic title="总记录数" :value="totalRecords" style="margin-bottom: 16px">
+      <a-col :span="6">
+        <a-statistic title="可见记录数" :value="totalVisibleRecords" style="margin-bottom: 16px">
           <template #suffix>
             <file-text-outlined />
+          </template>
+        </a-statistic>
+      </a-col>
+      <a-col :span="6">
+        <a-statistic title="待处理处方" :value="pendingPrescriptions" style="margin-bottom: 16px">
+          <template #suffix>
+            <medicine-box-outlined />
           </template>
         </a-statistic>
       </a-col>
@@ -54,9 +61,12 @@
       <a-col :span="12">
         <a-card title="健康记录" :bordered="false">
           <template #extra><a href="#" @click="navigateTo('/doctor/records')">更多</a></template>
-          <p>您已创建 <a-typography-text strong>{{ totalRecords }}</a-typography-text> 份健康记录</p>
-          <p>最近更新 <a-typography-text strong>{{ recentRecords.length }}</a-typography-text> 份记录</p>
-          <a-button type="primary" @click="navigateTo('/doctor/records')">管理健康记录</a-button>
+          <p>您可查看 <a-typography-text strong>{{ totalVisibleRecords }}</a-typography-text> 份健康记录</p>
+          <p>待处理处方 <a-typography-text strong>{{ pendingPrescriptions }}</a-typography-text> 份</p>
+          <a-space>
+            <a-button type="primary" @click="navigateTo('/doctor/records')">管理健康记录</a-button>
+            <a-button v-if="pendingPrescriptions > 0" @click="navigateTo('/doctor/prescriptions/pending')">处理处方</a-button>
+          </a-space>
         </a-card>
       </a-col>
     </a-row>
@@ -78,6 +88,11 @@
                       <div>{{ dayjs(item.created_at).format('YYYY-MM-DD') }}</div>
                     </template>
                   </a-list-item-meta>
+                  <div>
+                    <a-tag :color="getRecordTypeColor(item.record_type)">
+                      {{ getRecordTypeName(item.record_type) }}
+                    </a-tag>
+                  </div>
                   <template #actions>
                     <a @click="viewRecord(item.id)">查看</a>
                   </template>
@@ -98,19 +113,23 @@ import { message } from 'ant-design-vue';
 import { 
   UserOutlined, 
   FileTextOutlined,
-  TeamOutlined
+  TeamOutlined,
+  MedicineBoxOutlined
 } from '@ant-design/icons-vue';
 import dayjs from 'dayjs';
 
 import { getDoctorDashboard } from '@/api/doctor';
 import type { DoctorDashboardResponse } from '@/types/doctor';
+import { useRecordTypes } from '@/hooks/useRecordTypes';
 
 const router = useRouter();
+const { getRecordTypeName, getRecordTypeColor } = useRecordTypes();
 
 // 统计数据
 const todayPatients = ref(0);
 const totalPatients = ref(0);
-const totalRecords = ref(0);
+const totalVisibleRecords = ref(0);
+const pendingPrescriptions = ref(0);
 
 // 医生信息
 const doctorInfo = ref<DoctorDashboardResponse['doctor'] | null>(null);
@@ -135,7 +154,8 @@ const fetchDashboardData = async () => {
       // 设置统计数据
       todayPatients.value = data.statistics.today_patients;
       totalPatients.value = data.statistics.total_patients;
-      totalRecords.value = data.statistics.total_records;
+      totalVisibleRecords.value = data.statistics.total_visible_records;
+      pendingPrescriptions.value = data.statistics.pending_prescriptions;
       
       // 设置最近记录
       recentRecords.value = data.recent_records;
@@ -155,7 +175,7 @@ const navigateTo = (path: string) => {
 
 // 查看记录详情
 const viewRecord = (recordId: string) => {
-  router.push(`/doctor/records?id=${recordId}`);
+  router.push(`/doctor/patient-records?id=${recordId}`);
 };
 
 // 组件挂载时加载数据

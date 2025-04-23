@@ -11,6 +11,9 @@ import type {
   GetDoctorPatientsResponse,
   GetDoctorRecordsParams,
   GetDoctorRecordsResponse,
+  GetPatientRecordsParams,
+  GetPatientRecordsResponse,
+  PatientRecordDetailResponse,
   PIRQueryPatientRequest,
   PIRQueryPatientResponse,
   PatientDetailsResponse,
@@ -98,7 +101,7 @@ export const decryptRecord = async (
 };
 
 /**
- * 合规性验证接口 - 验证记录是否符合合规要求
+ * 合规性验证接口 - 验证记录是否符合合规要求/records/<record_id>/verify-compliance
  */
 export const verifyRecordCompliance = async (
   recordId: string,
@@ -244,4 +247,22 @@ export const processPrescriptionRequest = async (
   data: ProcessPrescriptionRequest
 ): Promise<ApiResponse<ProcessPrescriptionResponse>> => {
   return request.put(`${API_PATH}/prescriptions/${prescriptionId}/process`, data);
+};
+
+/**
+ * 获取患者创建的可见健康记录列表（医生可见或公开可见）
+ */
+export const getPatientRecords = async (
+  params?: GetPatientRecordsParams
+): Promise<ApiResponse<GetPatientRecordsResponse>> => {
+  return request.get(`${API_PATH}/patient-records`, { params });
+};
+
+/**
+ * 获取单个患者健康记录详情（医生可见或公开可见）
+ */
+export const getPatientRecordDetail = async (
+  recordId: string | number
+): Promise<ApiResponse<PatientRecordDetailResponse>> => {
+  return request.get(`${API_PATH}/patient-records/${recordId}`);
 }; 

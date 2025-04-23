@@ -28,10 +28,6 @@
           <template #icon><file-text-outlined /></template>
           <span>健康记录</span>
         </a-menu-item>  
-        <a-menu-item key="analytics">
-          <template #icon><fund-outlined /></template>
-          <span>数据分析</span>
-        </a-menu-item>
         <a-menu-item key="pir">
           <template #icon><fund-outlined /></template>
           <span>隐私查询</span> 
@@ -232,8 +228,6 @@ const currentPageTitle = computed(() => {
     return '工作台';
   } else if (path.includes('/researcher/projects')) {
     return '研究项目';
-  } else if (path.includes('/researcher/analytics')) {
-    return '数据分析';  
   } else if (path.includes('/researcher/records')) {
     return '健康记录';
   } else if (path.includes('/researcher/profile')) {
@@ -260,9 +254,6 @@ const handleMenuSelect = ({ key }: { key: string }) => {
       break;
     case 'records':
       router.push('/researcher/records');
-      break;
-    case 'analytics':
-      router.push('/researcher/analytics');
       break;
     case 'profile':
       router.push('/researcher/profile');
@@ -375,8 +366,6 @@ const setInitialSelectedKey = () => {
     selectedKeys.value = ['dashboard'];
   } else if (path.includes('/researcher/projects')) {
     selectedKeys.value = ['projects'];
-  } else if (path.includes('/researcher/analytics')) {
-    selectedKeys.value = ['analytics']; 
   } else if (path.includes('/researcher/records')) {
     selectedKeys.value = ['records'];
   } else if (path.includes('/researcher/profile')) {

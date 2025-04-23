@@ -509,7 +509,7 @@ export interface ExperimentDetailResponse {
         iv: string;
         tag: string;
         aad: string;
-      };
+  };
       key_salt: string;
       encryption_algorithm: string;
       encryption_date: string;

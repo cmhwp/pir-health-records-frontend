@@ -93,7 +93,7 @@
                         :key="index" 
                         :header="`记录 ${index + 1}: ${sample.record_type}`"
                       >
-                        <pre class="code-block">{{ JSON.stringify(sample, null, 2) }}</pre>
+                    <pre class="code-block">{{ JSON.stringify(sample, null, 2) }}</pre>
                       </a-collapse-panel>
                     </a-collapse>
                   </a-tab-pane>
@@ -119,8 +119,8 @@
             </a-card>
           </a-col>
         </a-row>
-        
-        <!-- 协议配置 -->
+          
+          <!-- 协议配置 -->
         <a-row :gutter="16" style="margin-top: 16px">
           <a-col :span="24">
             <a-card title="协议配置" class="detail-card">

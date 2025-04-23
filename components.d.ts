@@ -108,6 +108,8 @@ declare module 'vue' {
     MaintenanceContent: typeof import('./src/components/admin/MaintenanceContent.vue')['default']
     MetricsDetailModal: typeof import('./src/components/researcher/experiment/MetricsDetailModal.vue')['default']
     PatientInfo: typeof import('./src/components/auth/PatientInfo.vue')['default']
+    PatientRecordDetailContent: typeof import('./src/components/doctor/PatientRecordDetailContent.vue')['default']
+    PatientRecordsContent: typeof import('./src/components/doctor/PatientRecordsContent.vue')['default']
     PatientsContent: typeof import('./src/components/doctor/PatientsContent.vue')['default']
     PatientStatisticsContent: typeof import('./src/components/doctor/PatientStatisticsContent.vue')['default']
     PirHistoryContent: typeof import('./src/components/patient/PirHistoryContent.vue')['default']
