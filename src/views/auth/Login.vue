@@ -80,10 +80,18 @@ const handleSubmit = async () => {
     if (success) {
       message.success('登录成功');
       // 登录成功后的路由跳转已在store中处理
+    } else {
+      // 登录失败，但没有抛出异常的情况
+      message.error('登录失败，请检查用户名和密码');
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('登录失败:', error);
-    message.error('登录失败，请检查用户名和密码');
+    // 检查是否有响应数据中的错误信息
+    if (error.response?.data?.message) {
+      message.error(error.response.data.message);
+    } else {
+      message.error('登录失败，请检查用户名和密码或网络连接');
+    }
   } finally {
     loading.value = false;
   }

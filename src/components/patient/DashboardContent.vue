@@ -50,10 +50,6 @@
                       <template #icon><EyeOutlined /></template>
                       查看
                     </a-button>
-                    <a-button type="link" size="small" @click="shareRecord(item._id)">
-                      <template #icon><ShareAltOutlined /></template>
-                      分享
-                    </a-button>
                   </a-space>
                 </template>
               </a-list-item>

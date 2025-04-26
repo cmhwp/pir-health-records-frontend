@@ -82,9 +82,9 @@
     </a-row>
 
     <!-- 项目记录和数据分析 -->
-    <a-row :gutter="16" style="margin-top: 16px">
+    <a-row :gutter="20" style="margin-top: 16px">
       <!-- 近期项目 -->
-      <a-col :xs="24" :sm="24" :md="14" :lg="16" :xl="16">
+      <a-col :xs="24" :sm="24" :md="24" :lg="24" :xl="24">
         <a-card title="近期项目" class="dashboard-card">
           <template #extra>
             <a-button type="primary" size="small" @click="handleNewProject">
@@ -120,17 +120,6 @@
                 </a-list-item>
               </template>
             </a-list>
-          </a-skeleton>
-        </a-card>
-      </a-col>
-
-      <!-- 数据记录分布 -->
-      <a-col :xs="24" :sm="24" :md="10" :lg="8" :xl="8">
-        <a-card title="记录类型分布" class="dashboard-card">
-          <a-skeleton :loading="loading" active :paragraph="{ rows: 5 }">
-            <div id="record-chart" class="chart-container">
-              <record-type-chart :loading="loading" />
-            </div>
           </a-skeleton>
         </a-card>
       </a-col>

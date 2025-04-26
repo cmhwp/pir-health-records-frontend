@@ -163,7 +163,11 @@
             </a-tab-pane>
             
             <a-tab-pane v-if="showRoleSpecificInfo" key="role_info" tab="角色信息">
-              <component :is="roleInfoComponent" :user-id="userId as number" />
+              <component 
+                :is="roleInfoComponent" 
+                :user-id="userId as number" 
+                :user-data="originalUserData" 
+              />
             </a-tab-pane>
           </a-tabs>
         </a-card>
@@ -250,6 +254,7 @@ const fetchUserInfo = async () => {
   loading.value = true;
   try {
     const response = await getCurrentUser();
+    console.log(response)
     if (response.success) {
       Object.assign(userForm, response.data);
       userId.value = response.data?.id || null;

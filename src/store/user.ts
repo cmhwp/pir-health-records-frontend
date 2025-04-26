@@ -79,10 +79,12 @@ export const useUserStore = defineStore('user', () => {
   /**
    * 用户退出登录
    */
-  async function logout() {
+  async function logout(skipApi: boolean = false) {
     loading.value = true;
     try {
-      await apiLogout();
+      if (!skipApi) {
+        await apiLogout();
+      }
       // 无论API调用是否成功，都清除本地状态
       token.value = null;
       user.value = null;

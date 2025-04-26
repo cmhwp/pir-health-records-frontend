@@ -64,9 +64,12 @@ instance.interceptors.response.use(
       
       // 处理401未授权错误（token无效或过期）
       if (status === 401) {
-        message.error('登录已过期，请重新登录')
-        userStore.logout()
-        router.push('/auth/login')
+        // 只有在不是登出请求且不是登录请求时才处理401
+        if (!error.config.url?.includes('/auth/logout') && !error.config.url?.includes('/auth/login')) {
+          message.error('登录已过期，请重新登录')
+          userStore.logout(true) // 添加参数以跳过API调用
+          router.push('/auth/login')
+        }
       } 
       // 处理403禁止访问错误
       else if (status === 403) {

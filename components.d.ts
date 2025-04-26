@@ -140,6 +140,7 @@ declare module 'vue' {
     TeamsContent: typeof import('./src/components/researcher/TeamsContent.vue')['default']
     TimeDistributionChart: typeof import('./src/components/researcher/charts/TimeDistributionChart.vue')['default']
     UserActivityContent: typeof import('./src/components/admin/UserActivityContent.vue')['default']
+    UserInfoDisplay: typeof import('./src/components/auth/UserInfoDisplay.vue')['default']
     UsersContent: typeof import('./src/components/admin/UsersContent.vue')['default']
     VectorExplanation: typeof import('./src/components/researcher/VectorExplanation.vue')['default']
     VectorExplanationPage: typeof import('./src/components/researcher/VectorExplanationPage.vue')['default']

@@ -454,6 +454,7 @@ const getProtocolParams = () => {
   if (!experiment.value?.protocol_config) return {};
   
   const { protocol_type, ...params } = experiment.value.protocol_config;
+  console.log('protocol_params', params);
   return params;
 };
 
@@ -472,7 +473,10 @@ const formatMetricName = (metricName: string) => {
     [PIRPerformanceMetric.COMM_COST]: '通信成本',
     [PIRPerformanceMetric.SERVER_LOAD]: '服务器负载',
     [PIRPerformanceMetric.CLIENT_LOAD]: '客户端负载',
-    [PIRPerformanceMetric.PRIVACY_LEVEL]: '隐私保护级别'
+    [PIRPerformanceMetric.PRIVACY_LEVEL]: '隐私保护级别',
+    [PIRPerformanceMetric.TOTAL_QUERY_TIME]: '总查询时间',
+    [PIRPerformanceMetric.START_TIME]: '开始时间',
+    [PIRPerformanceMetric.END_TIME]: '结束时间'
   };
   return nameMap[metricName] || formatParamName(metricName);
 };
@@ -480,22 +484,61 @@ const formatMetricName = (metricName: string) => {
 // 格式化指标值
 const formatMetricValue = (metricName: string, value: any) => {
   if (metricName === PIRPerformanceMetric.QUERY_TIME) {
-    return parseFloat(String(value)).toFixed(3);
+    // 将小值显示为微秒
+    const seconds = parseFloat(String(value));
+    if (seconds < 0.001) {
+      return (seconds * 1000000).toFixed(2); // 转换为微秒
+    }
+    return seconds.toFixed(5);
+  }
+  if (metricName === PIRPerformanceMetric.SERVER_LOAD || metricName === PIRPerformanceMetric.CLIENT_LOAD) {
+    // 对于非常小的值，调整显示格式
+    const load = parseFloat(String(value));
+    if (load < 0.0001) {
+      return (load * 1000000).toFixed(2) + 'μ'; // 微单位
+    }
+    return (load * 100).toFixed(2);
+  }
+  if(metricName === PIRPerformanceMetric.START_TIME || metricName === PIRPerformanceMetric.END_TIME){
+    return formatDateTime(value);
+  }
+  if (metricName === PIRPerformanceMetric.TOTAL_QUERY_TIME) {
+    const seconds = parseFloat(String(value));
+    return (seconds * 1000).toFixed(3); // 转换为毫秒，保留3位小数
+  }
+  if (metricName === PIRPerformanceMetric.ACCURACY) {
+    return (parseFloat(String(value)) * 100).toFixed(1); // 转为百分比
   }
   return value;
 };
 
 // 获取指标单位
 const getMetricUnit = (metricName: string) => {
-  const unitMap: Record<string, string> = {
-    [PIRPerformanceMetric.QUERY_TIME]: '秒',
-    [PIRPerformanceMetric.ACCURACY]: '',
+  const unitMap: Record<string, string | ((value: any) => string)> = {
+    [PIRPerformanceMetric.QUERY_TIME]: (value) => {
+      const seconds = parseFloat(String(value));
+      return seconds < 0.001 ? 'μs' : 's';
+    },
+    [PIRPerformanceMetric.ACCURACY]: '%',
     [PIRPerformanceMetric.COMM_COST]: 'KB',
-    [PIRPerformanceMetric.SERVER_LOAD]: '%',
-    [PIRPerformanceMetric.CLIENT_LOAD]: '%',
-    [PIRPerformanceMetric.PRIVACY_LEVEL]: '级'
+    [PIRPerformanceMetric.SERVER_LOAD]: (value) => {
+      const load = parseFloat(String(value));
+      return load < 0.0001 ? '' : '%';
+    },
+    [PIRPerformanceMetric.CLIENT_LOAD]: (value) => {
+      const load = parseFloat(String(value));
+      return load < 0.0001 ? '' : '%';
+    },
+    [PIRPerformanceMetric.PRIVACY_LEVEL]: '级',
+    [PIRPerformanceMetric.TOTAL_QUERY_TIME]: 'ms'
   };
-  return unitMap[metricName] || '';
+  
+  const unit = unitMap[metricName];
+  // 处理动态单位
+  if (typeof unit === 'function') {
+    return unit(experiment.value?.results?.metrics[metricName]);
+  }
+  return unit || '';
 };
 
 // 获取明文数据样本

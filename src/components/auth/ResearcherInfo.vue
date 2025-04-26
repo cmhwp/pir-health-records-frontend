@@ -43,13 +43,14 @@
 </template>
 
 <script lang="ts" setup>
-import { reactive, ref, onMounted } from 'vue';
+import { reactive, ref, onMounted, watch } from 'vue';
 import { message } from 'ant-design-vue';
 import axios from 'axios';
-import type { ResearcherInfo } from '@/types/auth';
+import type { ResearcherInfo, User } from '@/types/auth';
 
 const props = defineProps<{
-  userId: number
+  userId: number,
+  userData?: User
 }>();
 
 const loading = ref(false);
@@ -65,8 +66,21 @@ const researcherForm = reactive<Partial<ResearcherInfo>>({
   bio: ''
 });
 
+// 监听userData变化，更新表单
+watch(() => props.userData, (newUserData) => {
+  if (newUserData?.researcher_info) {
+    Object.assign(researcherForm, newUserData.researcher_info);
+  }
+}, { immediate: true });
+
 // 获取研究人员信息
 const fetchResearcherInfo = async () => {
+  // 如果父组件已经提供了用户数据，则无需再次获取
+  if (props.userData?.researcher_info) {
+    Object.assign(researcherForm, props.userData.researcher_info);
+    return;
+  }
+  
   loading.value = true;
   try {
     const response = await axios.get(`/api/researcher/info/${props.userId}`);
@@ -98,7 +112,9 @@ const handleUpdate = async () => {
 };
 
 onMounted(() => {
-  fetchResearcherInfo();
+  if (!props.userData) {
+    fetchResearcherInfo();
+  }
 });
 </script>
 

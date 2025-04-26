@@ -22,7 +22,7 @@
                     <a-statistic 
                       :title="formatMetricName(key)"
                       :value="formatMetricValue(key, value)"
-                      :precision="key === 'query_time' || key === 'accuracy' ? 3 : 0"
+                      :precision="getPrecision(key)"
                       :suffix="getMetricUnit(key)"
                       style="margin-bottom: 24px;"
                     />
@@ -67,12 +67,57 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted, nextTick, defineProps, defineEmits, watch } from 'vue';
+import { ref, onMounted, nextTick, defineProps, defineEmits, watch, onBeforeUnmount } from 'vue';
 import { message } from 'ant-design-vue';
 import dayjs from 'dayjs';
 import { getPerformanceMetrics } from '@/api/researcher';
 import { PIRProtocolType, PIRPerformanceMetric } from '@/types/researcher';
 import type { PerformanceMetricsResponse } from '@/types/researcher';
+import * as echarts from 'echarts/core';
+import { 
+  BarChart, 
+  type BarSeriesOption,
+  GaugeChart,
+  type GaugeSeriesOption,
+  PieChart,
+  type PieSeriesOption
+} from 'echarts/charts';
+import {
+  TooltipComponent,
+  type TooltipComponentOption,
+  LegendComponent,
+  type LegendComponentOption,
+  TitleComponent,
+  type TitleComponentOption,
+  GridComponent,
+  type GridComponentOption
+} from 'echarts/components';
+import { LabelLayout } from 'echarts/features';
+import { CanvasRenderer } from 'echarts/renderers';
+
+// 注册必须的组件
+echarts.use([
+  BarChart,
+  GaugeChart,
+  PieChart,
+  TooltipComponent,
+  LegendComponent,
+  TitleComponent,
+  GridComponent,
+  LabelLayout,
+  CanvasRenderer
+]);
+
+// 定义类型
+type ECOption = echarts.ComposeOption<
+  BarSeriesOption | 
+  GaugeSeriesOption |
+  PieSeriesOption |
+  TooltipComponentOption | 
+  LegendComponentOption |
+  GridComponentOption |
+  TitleComponentOption
+>;
 
 const props = defineProps<{
   visible: boolean;
@@ -93,6 +138,14 @@ const queryTimeChart = ref<HTMLElement | null>(null);
 const communicationChart = ref<HTMLElement | null>(null);
 const comparisonChart = ref<HTMLElement | null>(null);
 const privacyChart = ref<HTMLElement | null>(null);
+
+// 创建chart实例的映射
+const charts = ref<{[key: string]: echarts.ECharts | null}>({
+  queryTime: null,
+  communication: null,
+  comparison: null,
+  privacy: null
+});
 
 // 监听visible属性变化
 watch(
@@ -140,6 +193,7 @@ const fetchMetrics = async () => {
   loading.value = true;
   try {
     const response = await getPerformanceMetrics(props.experimentId);
+    console.log(response)
     if (response.success) {
       metrics.value = response.data || null;
       
@@ -162,51 +216,264 @@ const fetchMetrics = async () => {
 
 // 渲染图表
 const renderCharts = () => {
-  // 这里可以使用echarts或其他图表库来渲染图表
-  // 需要先引入图表库
-  // 由于这里使用的是ref引用DOM元素，需要确保元素已经渲染
-  console.log('渲染性能图表', queryTimeChart.value, communicationChart.value);
+  if (!metrics.value) return;
   
-  // 这里仅做简单的示例，实际项目中应该引入echarts并实现具体的图表渲染逻辑
-  if (queryTimeChart.value) {
-    queryTimeChart.value.innerHTML = `
-      <div class="chart-title">查询时间</div>
-      <div class="chart-placeholder">
-        <div class="chart-placeholder-text">查询时间图表</div>
-        <div class="chart-value">${metrics.value?.metrics.query_time || 0} 秒</div>
-      </div>
-    `;
-  }
-  
-  if (communicationChart.value) {
-    communicationChart.value.innerHTML = `
-      <div class="chart-title">通信成本</div>
-      <div class="chart-placeholder">
-        <div class="chart-placeholder-text">通信成本图表</div>
-        <div class="chart-value">${metrics.value?.metrics.comm_cost || 0} KB</div>
-      </div>
-    `;
-  }
-  
-  if (comparisonChart.value) {
-    comparisonChart.value.innerHTML = `
-      <div class="chart-title">负载对比</div>
-      <div class="chart-placeholder">
-        <div class="chart-placeholder-text">负载对比图表</div>
-        <div class="chart-value">服务器: ${metrics.value?.metrics.server_load || 0}% / 客户端: ${metrics.value?.metrics.client_load || 0}%</div>
-      </div>
-    `;
-  }
-  
-  if (privacyChart.value) {
-    privacyChart.value.innerHTML = `
-      <div class="chart-title">隐私保护级别</div>
-      <div class="chart-placeholder">
-        <div class="chart-placeholder-text">隐私保护级别图表</div>
-        <div class="chart-value">${metrics.value?.metrics.privacy_level || 0} 级</div>
-      </div>
-    `;
-  }
+  nextTick(() => {
+    // 渲染查询时间图表
+    if (queryTimeChart.value && !charts.value.queryTime && metrics.value) {
+      charts.value.queryTime = echarts.init(queryTimeChart.value);
+      
+      const queryTime = metrics.value.metrics.query_time || 0;
+      
+      const queryTimeOption: ECOption = {
+        title: {
+          text: '查询时间 (秒)',
+          left: 'center'
+        },
+        tooltip: {
+          formatter: '{b}: {c} 秒'
+        },
+        series: [
+          {
+            type: 'gauge',
+            min: 0,
+            max: Math.max(queryTime * 2, 0.1),
+            progress: {
+              show: true,
+              roundCap: true,
+              width: 18
+            },
+            axisLine: {
+              lineStyle: {
+                width: 18
+              }
+            },
+            axisTick: {
+              show: false
+            },
+            splitLine: {
+              length: 15,
+              lineStyle: {
+                width: 2,
+                color: '#999'
+              }
+            },
+            axisLabel: {
+              distance: 25,
+              color: '#999',
+              fontSize: 12
+            },
+            anchor: {
+              show: true,
+              showAbove: true,
+              size: 25,
+              itemStyle: {
+                borderWidth: 10
+              }
+            },
+            title: {
+              show: false
+            },
+            detail: {
+              valueAnimation: true,
+              formatter: '{value} 秒',
+              fontSize: 16,
+              offsetCenter: [0, '70%']
+            },
+            data: [
+              {
+                value: queryTime,
+                name: '查询时间'
+              }
+            ]
+          }
+        ]
+      };
+      
+      charts.value.queryTime.setOption(queryTimeOption);
+    }
+    
+    // 渲染通信成本图表
+    if (communicationChart.value && !charts.value.communication && metrics.value) {
+      charts.value.communication = echarts.init(communicationChart.value);
+      
+      const commCost = metrics.value.metrics.comm_cost || 0;
+      
+      const commCostOption: ECOption = {
+        title: {
+          text: '通信成本 (KB)',
+          left: 'center'
+        },
+        tooltip: {
+          trigger: 'item'
+        },
+        series: [
+          {
+            name: '通信成本',
+            type: 'pie',
+            radius: ['40%', '70%'],
+            avoidLabelOverlap: false,
+            itemStyle: {
+              borderRadius: 10,
+              borderColor: '#fff',
+              borderWidth: 2
+            },
+            label: {
+              show: false,
+              position: 'center'
+            },
+            emphasis: {
+              label: {
+                show: true,
+                fontSize: 20,
+                fontWeight: 'bold'
+              }
+            },
+            labelLine: {
+              show: false
+            },
+            data: [
+              { value: commCost, name: '数据传输' },
+              { 
+                value: commCost > 10 ? 10 : commCost * 0.5, 
+                name: '其他成本'
+              }
+            ]
+          }
+        ]
+      };
+      
+      charts.value.communication.setOption(commCostOption);
+    }
+    
+    // 渲染负载对比图表
+    if (comparisonChart.value && !charts.value.comparison && metrics.value) {
+      charts.value.comparison = echarts.init(comparisonChart.value);
+      
+      const serverLoad = (metrics.value.metrics.server_load || 0) * 100;
+      const clientLoad = (metrics.value.metrics.client_load || 0) * 100;
+      
+      const comparisonOption: ECOption = {
+        title: {
+          text: '负载对比',
+          left: 'center'
+        },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: {
+            type: 'shadow'
+          }
+        },
+        grid: {
+          left: '3%',
+          right: '4%',
+          bottom: '3%',
+          containLabel: true
+        },
+        xAxis: {
+          type: 'value',
+          max: Math.max(serverLoad, clientLoad) * 1.2,
+          axisLabel: {
+            formatter: '{value}%'
+          }
+        },
+        yAxis: {
+          type: 'category',
+          data: ['客户端', '服务端']
+        },
+        series: [
+          {
+            name: '负载百分比',
+            type: 'bar',
+            data: [clientLoad, serverLoad],
+            itemStyle: {
+              color: function(params: any) {
+                const colorList = ['#5470c6', '#91cc75'];
+                return colorList[params.dataIndex];
+              }
+            },
+            label: {
+              show: true,
+              position: 'right',
+              formatter: '{c}%'
+            }
+          }
+        ]
+      };
+      
+      charts.value.comparison.setOption(comparisonOption);
+    }
+    
+    // 渲染隐私保护等级图表
+    if (privacyChart.value && !charts.value.privacy && metrics.value) {
+      charts.value.privacy = echarts.init(privacyChart.value);
+      
+      const privacyLevel = metrics.value.metrics.privacy_level || 0;
+      
+      const privacyOption: ECOption = {
+        title: {
+          text: '隐私保护级别',
+          left: 'center'
+        },
+        tooltip: {
+          formatter: '{b}: {c}级'
+        },
+        series: [
+          {
+            type: 'gauge',
+            min: 0,
+            max: 10,
+            progress: {
+              show: true,
+              roundCap: true,
+              width: 18
+            },
+            axisLine: {
+              lineStyle: {
+                width: 18,
+                color: [
+                  [0.2, '#ff4500'],
+                  [0.4, '#ffa500'],
+                  [0.6, '#ffff00'],
+                  [0.8, '#9acd32'],
+                  [1, '#008000']
+                ]
+              }
+            },
+            axisTick: {
+              show: false
+            },
+            splitLine: {
+              length: 15,
+              lineStyle: {
+                width: 2,
+                color: '#999'
+              }
+            },
+            axisLabel: {
+              distance: 25,
+              color: '#999',
+              fontSize: 12
+            },
+            detail: {
+              valueAnimation: true,
+              formatter: '{value} 级',
+              fontSize: 16,
+              offsetCenter: [0, '70%']
+            },
+            data: [
+              {
+                value: privacyLevel,
+                name: '隐私等级'
+              }
+            ]
+          }
+        ]
+      };
+      
+      charts.value.privacy.setOption(privacyOption);
+    }
+  });
 };
 
 // 格式化日期时间
@@ -234,7 +501,10 @@ const formatMetricName = (metricName: string) => {
     [PIRPerformanceMetric.COMM_COST]: '通信成本',
     [PIRPerformanceMetric.SERVER_LOAD]: '服务器负载',
     [PIRPerformanceMetric.CLIENT_LOAD]: '客户端负载',
-    [PIRPerformanceMetric.PRIVACY_LEVEL]: '隐私保护级别'
+    [PIRPerformanceMetric.PRIVACY_LEVEL]: '隐私保护级别',
+    [PIRPerformanceMetric.TOTAL_QUERY_TIME]: '总查询时间',
+    [PIRPerformanceMetric.START_TIME]: '开始时间',
+    [PIRPerformanceMetric.END_TIME]: '结束时间'
   };
   return nameMap[metricName] || metricName
     .replace(/_/g, ' ')
@@ -244,25 +514,72 @@ const formatMetricName = (metricName: string) => {
 // 格式化指标值
 const formatMetricValue = (metricName: string, value: any) => {
   if (metricName === PIRPerformanceMetric.QUERY_TIME) {
-    return parseFloat(String(value)).toFixed(3);
+    // 将小值显示为微秒
+    const seconds = parseFloat(String(value));
+    if (seconds < 0.001) {
+      return (seconds * 1000000).toFixed(2); // 转换为微秒
+    }
+    return seconds.toFixed(5);
   }
   if (metricName === PIRPerformanceMetric.SERVER_LOAD || metricName === PIRPerformanceMetric.CLIENT_LOAD) {
-    return (parseFloat(String(value)) * 100).toFixed(2);
+    // 对于非常小的值，调整显示格式
+    const load = parseFloat(String(value));
+    if (load < 0.0001) {
+      return (load * 1000000).toFixed(2) + 'μ'; // 微单位
+    }
+    return (load * 100).toFixed(2);
+  }
+  if (metricName === PIRPerformanceMetric.TOTAL_QUERY_TIME) {
+    const seconds = parseFloat(String(value));
+    return (seconds * 1000).toFixed(3); // 转换为毫秒，保留3位小数
+  }
+  if (metricName === PIRPerformanceMetric.ACCURACY) {
+    return (parseFloat(String(value)) * 100).toFixed(1); // 转为百分比
+  }
+  if(metricName === PIRPerformanceMetric.START_TIME || metricName === PIRPerformanceMetric.END_TIME){
+    return formatDateTime(value);
   }
   return value;
 };
 
+// 获取指标精度
+const getPrecision = (metricName: string) => {
+  if (metricName === PIRPerformanceMetric.QUERY_TIME || metricName === PIRPerformanceMetric.ACCURACY) {
+    return 3;
+  }
+  if (metricName === PIRPerformanceMetric.TOTAL_QUERY_TIME) {
+    return 5; // 总查询时间保留5位小数
+  }
+  return 0;
+};
+
 // 获取指标单位
 const getMetricUnit = (metricName: string) => {
-  const unitMap: Record<string, string> = {
-    [PIRPerformanceMetric.QUERY_TIME]: '秒',
-    [PIRPerformanceMetric.ACCURACY]: '',
+  const unitMap: Record<string, string | ((value: any) => string)> = {
+    [PIRPerformanceMetric.QUERY_TIME]: (value) => {
+      const seconds = parseFloat(String(value));
+      return seconds < 0.001 ? 'μs' : 's';
+    },
+    [PIRPerformanceMetric.ACCURACY]: '%',
     [PIRPerformanceMetric.COMM_COST]: 'KB',
-    [PIRPerformanceMetric.SERVER_LOAD]: '%',
-    [PIRPerformanceMetric.CLIENT_LOAD]: '%',
-    [PIRPerformanceMetric.PRIVACY_LEVEL]: '级'
+    [PIRPerformanceMetric.SERVER_LOAD]: (value) => {
+      const load = parseFloat(String(value));
+      return load < 0.0001 ? '' : '%';
+    },
+    [PIRPerformanceMetric.CLIENT_LOAD]: (value) => {
+      const load = parseFloat(String(value));
+      return load < 0.0001 ? '' : '%';
+    },
+    [PIRPerformanceMetric.PRIVACY_LEVEL]: '级',
+    [PIRPerformanceMetric.TOTAL_QUERY_TIME]: 'ms'
   };
-  return unitMap[metricName] || '';
+  
+  const unit = unitMap[metricName];
+  // 处理动态单位
+  if (typeof unit === 'function') {
+    return unit(metrics.value?.metrics[metricName]);
+  }
+  return unit || '';
 };
 
 // 在组件挂载时，如果模态框可见，则获取性能指标
@@ -270,6 +587,15 @@ onMounted(() => {
   if (modalVisible.value) {
     fetchMetrics();
   }
+});
+
+// 在组件卸载前清理chart实例
+onBeforeUnmount(() => {
+  Object.values(charts.value).forEach(chart => {
+    if (chart) {
+      chart.dispose();
+    }
+  });
 });
 </script>
 
@@ -310,18 +636,7 @@ onMounted(() => {
 }
 
 .chart-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: calc(100% - 28px);
-  border: 1px dashed #d9d9d9;
-  border-radius: 4px;
-}
-
-.chart-placeholder-text {
-  color: #999;
-  margin-bottom: 8px;
+  display: none; /* 隐藏placeholder，使用echarts代替 */
 }
 
 .chart-value {

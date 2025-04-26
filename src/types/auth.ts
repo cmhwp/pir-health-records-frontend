@@ -23,6 +23,8 @@ export interface User {
     prescriptions_count: number;
   };
   patient_info?: PatientInfo;
+  doctor_info?: DoctorInfo;
+  researcher_info?: ResearcherInfo;
 }
 
 export interface PatientInfo {

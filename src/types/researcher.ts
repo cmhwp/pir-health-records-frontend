@@ -323,7 +323,10 @@ export enum PIRPerformanceMetric {
   COMM_COST = 'comm_cost',
   SERVER_LOAD = 'server_load',
   CLIENT_LOAD = 'client_load',
-  PRIVACY_LEVEL = 'privacy_level'
+  PRIVACY_LEVEL = 'privacy_level',
+  TOTAL_QUERY_TIME = 'total_query_time',
+  START_TIME = 'start_time',
+  END_TIME = 'end_time'
 }
 
 // 生成模拟数据请求参数

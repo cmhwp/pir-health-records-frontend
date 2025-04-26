@@ -88,7 +88,7 @@
               </template>
               <a-list-item-meta
                 :title="item.title"
-                :description="`记录日期: ${formatDate(item.record_date)} | 类型: ${getRecordTypeLabel(item.record_type)}`"
+                :description="`记录日期: ${formatDate(item.record_date)} | 类型: ${getRecordTypeName(item.record_type)}`"
               >
                 <template #avatar>
                   <a-avatar :style="{backgroundColor: getRecordTypeColor(item.record_type)}">
@@ -176,8 +176,9 @@ import type {
   Patient
 } from '@/types/doctor';
 import ViewRecordDetail from './ViewRecordDetail.vue';
-import { getRecordTypes } from '@/api/health';
+import { useRecordTypes } from '@/hooks/useRecordTypes';
 
+const { getRecordTypeColor, getRecordTypeName } = useRecordTypes();
 // 查询表单
 const queryForm = reactive<PIRQueryPatientRequest>({
   patient_id: undefined as number | undefined,
@@ -209,7 +210,6 @@ const recordTypeOptions = ref<{ label: string; value: string; color?: string; ic
 // 初始化
 onMounted(() => {
   loadPatients();
-  loadRecordTypes();
 });
 
 // 加载患者列表
@@ -227,24 +227,6 @@ const loadPatients = async () => {
   } catch (error: any) {
     console.error('获取患者列表失败:', error);
     message.error('获取患者列表失败，请稍后重试');
-  }
-};
-
-// 加载记录类型
-const loadRecordTypes = async () => {
-  try {
-    const response = await getRecordTypes();
-    if (response.success && response.data) {
-      recordTypeOptions.value = response.data.record_types.map(type => ({
-        label: type.name,
-        value: type.code,
-        color: type.color,
-        icon: type.icon
-      }));
-    }
-  } catch (error) {
-    console.error('获取记录类型失败:', error);
-    message.error('获取记录类型失败');
   }
 };
 
@@ -345,22 +327,6 @@ const formatDate = (dateString: string | undefined) => {
   return dayjs(dateString).format('YYYY-MM-DD');
 };
 
-// 获取记录类型颜色
-const getRecordTypeColor = (type: string) => {
-  const colorMap: { [key: string]: string } = {
-    general: '#1890ff',
-    laboratory: '#13c2c2',
-    medication: '#fa8c16',
-    imaging: '#722ed1',
-    vital_signs: '#52c41a',
-    surgery: '#f5222d',
-    vaccination: '#faad14',
-    allergy: '#eb2f96',
-    diagnosis: '#fa541c',
-    other: '#d9d9d9'
-  };
-  return colorMap[type] || '#d9d9d9';
-};
 
 // 获取记录类型首字母
 const getRecordTypeInitial = (type: string) => {
@@ -379,22 +345,6 @@ const getRecordTypeInitial = (type: string) => {
   return initialMap[type] || '?';
 };
 
-// 获取记录类型标签
-const getRecordTypeLabel = (type: string) => {
-  const labelMap: { [key: string]: string } = {
-    general: '一般记录',
-    laboratory: '实验室检查',
-    medication: '药物治疗',
-    imaging: '影像检查',
-    vital_signs: '生命体征',
-    surgery: '手术记录',
-    vaccination: '疫苗接种',
-    allergy: '过敏记录',
-    diagnosis: '诊断记录',
-    other: '其他'
-  };
-  return labelMap[type] || type;
-};
 
 // 截断文本
 const truncateText = (text: string, maxLength: number) => {
