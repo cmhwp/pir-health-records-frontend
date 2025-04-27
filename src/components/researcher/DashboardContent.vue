@@ -156,15 +156,9 @@
               </a-button>
             </a-list-item>
             <a-list-item>
-              <a-button block @click="handleExportData">
+              <a-button block @click="handlePIRExperiment">
                 <template #icon><export-outlined /></template>
-                导出匿名数据
-              </a-button>
-            </a-list-item>
-            <a-list-item>
-              <a-button block @click="handleAnalyzeData">
-                <template #icon><bar-chart-outlined /></template>
-                数据分析
+                PIR实验
               </a-button>
             </a-list-item>
           </a-list>
@@ -291,24 +285,9 @@ const handleQueryData = () => {
   router.push('/researcher/analytics');
 };
 
-// 处理导出数据
-const handleExportData = async () => {
-  try {
-    message.loading('正在导出数据...');
-    const blob = await exportAnonymizedRecords();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `匿名健康记录_${dayjs().format('YYYYMMDD_HHmmss')}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
-    message.success('数据导出成功');
-  } catch (error) {
-    console.error('导出数据失败:', error);
-    message.error('导出数据失败');
-  }
+// 处理PIR实验
+const handlePIRExperiment = () => {
+  router.push('/researcher/experiment');
 };
 
 // 处理数据分析

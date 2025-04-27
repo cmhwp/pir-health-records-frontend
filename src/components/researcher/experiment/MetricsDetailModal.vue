@@ -14,7 +14,7 @@
                 <template #title>
                   <span>PIR协议性能指标</span>
                   <a-tag v-if="metrics?.protocol?.protocol_type" :color="getProtocolColor(metrics.protocol.protocol_type)" style="margin-left: 8px;">
-                    {{ metrics?.protocol?.protocol_type }}
+                    {{ PIR_TYPE_MAP[metrics?.protocol?.protocol_type as keyof typeof PIR_TYPE_MAP] }}
                   </a-tag>
                 </template>
                 <a-row :gutter="16">
@@ -38,7 +38,7 @@
                 <a-descriptions bordered :column="{ xxl: 3, xl: 3, lg: 2, md: 2, sm: 1, xs: 1 }">
                   <a-descriptions-item label="实验ID">{{ metrics?.experiment_id }}</a-descriptions-item>
                   <a-descriptions-item label="测试时间">{{ formatDateTime(metrics?.timestamp) }}</a-descriptions-item>
-                  <a-descriptions-item label="协议类型">{{ metrics?.protocol?.protocol_type }}</a-descriptions-item>
+                  <a-descriptions-item label="协议类型">{{ PIR_TYPE_MAP[metrics?.protocol?.protocol_type as keyof typeof PIR_TYPE_MAP] }}</a-descriptions-item>
                 </a-descriptions>
               </a-card>
             </a-col>
@@ -74,6 +74,7 @@ import { getPerformanceMetrics } from '@/api/researcher';
 import { PIRProtocolType, PIRPerformanceMetric } from '@/types/researcher';
 import type { PerformanceMetricsResponse } from '@/types/researcher';
 import * as echarts from 'echarts/core';
+import { PIR_TYPE_MAP } from '@/constants/researcher';
 import { 
   BarChart, 
   type BarSeriesOption,

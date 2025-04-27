@@ -134,7 +134,7 @@
                 <a-descriptions bordered :column="{ xxl: 3, xl: 3, lg: 2, md: 2, sm: 1, xs: 1 }">
                   <a-descriptions-item label="协议类型">
                     <a-tag :color="getProtocolColor(experiment.protocol_config.protocol_type)">
-                      {{ experiment.protocol_config.protocol_type }}
+                      {{ PIR_TYPE_MAP[experiment.protocol_config.protocol_type as keyof typeof PIR_TYPE_MAP] }}
                     </a-tag>
                   </a-descriptions-item>
                   <a-descriptions-item v-for="(value, key) in getProtocolParams()" :key="key" :label="formatParamName(key)">
@@ -269,7 +269,7 @@
                                   <a-descriptions bordered :column="{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }">
                                     <a-descriptions-item label="协议类型">
                                       <a-tag :color="getProtocolColor(decryptedResults[index].protocol_type)">
-                                        {{ decryptedResults[index].protocol_type }}
+                                        {{ PIR_TYPE_MAP[decryptedResults[index].protocol_type as keyof typeof PIR_TYPE_MAP] || '-' }}
                                       </a-tag>
                                     </a-descriptions-item>
                                     <a-descriptions-item label="记录ID">
