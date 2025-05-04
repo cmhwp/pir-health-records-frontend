@@ -179,7 +179,7 @@
                       <a-descriptions-item v-for="(value, key) in experiment.results.metrics" :key="key" :label="formatMetricName(key)">
                         <a-statistic 
                           :value="formatMetricValue(key, value)" 
-                          :precision="key === 'query_time' || key === 'accuracy' ? 3 : 0"
+                          :precision="getMetricPrecision(key)"
                           :suffix="getMetricUnit(key)"
                           style="font-size: 16px;"
                         />
@@ -492,12 +492,10 @@ const formatMetricValue = (metricName: string, value: any) => {
     return seconds.toFixed(5);
   }
   if (metricName === PIRPerformanceMetric.SERVER_LOAD || metricName === PIRPerformanceMetric.CLIENT_LOAD) {
-    // 对于非常小的值，调整显示格式
-    const load = parseFloat(String(value));
-    if (load < 0.0001) {
-      return (load * 1000000).toFixed(2) + 'μ'; // 微单位
-    }
-    return (load * 100).toFixed(2);
+    // 服务器和客户端负载 - 直接展示百分比值
+    const loadValue = parseFloat(String(value));
+    if (isNaN(loadValue)) return "0.0";
+    return loadValue.toFixed(2); // 保留两位小数
   }
   if(metricName === PIRPerformanceMetric.START_TIME || metricName === PIRPerformanceMetric.END_TIME){
     return formatDateTime(value);
@@ -521,14 +519,8 @@ const getMetricUnit = (metricName: string) => {
     },
     [PIRPerformanceMetric.ACCURACY]: '%',
     [PIRPerformanceMetric.COMM_COST]: 'KB',
-    [PIRPerformanceMetric.SERVER_LOAD]: (value) => {
-      const load = parseFloat(String(value));
-      return load < 0.0001 ? '' : '%';
-    },
-    [PIRPerformanceMetric.CLIENT_LOAD]: (value) => {
-      const load = parseFloat(String(value));
-      return load < 0.0001 ? '' : '%';
-    },
+    [PIRPerformanceMetric.SERVER_LOAD]: '%', // 直接展示为百分比
+    [PIRPerformanceMetric.CLIENT_LOAD]: '%', // 直接展示为百分比
     [PIRPerformanceMetric.PRIVACY_LEVEL]: '级',
     [PIRPerformanceMetric.TOTAL_QUERY_TIME]: 'ms'
   };
@@ -539,6 +531,22 @@ const getMetricUnit = (metricName: string) => {
     return unit(experiment.value?.results?.metrics[metricName]);
   }
   return unit || '';
+};
+
+// 获取指标精度
+const getMetricPrecision = (metricName: string) => {
+  const precisionMap: Record<string, number> = {
+    [PIRPerformanceMetric.QUERY_TIME]: 3,
+    [PIRPerformanceMetric.ACCURACY]: 1,
+    [PIRPerformanceMetric.COMM_COST]: 0,
+    [PIRPerformanceMetric.SERVER_LOAD]: 2,
+    [PIRPerformanceMetric.CLIENT_LOAD]: 2,
+    [PIRPerformanceMetric.PRIVACY_LEVEL]: 0,
+    [PIRPerformanceMetric.TOTAL_QUERY_TIME]: 3,
+    [PIRPerformanceMetric.START_TIME]: 0,
+    [PIRPerformanceMetric.END_TIME]: 0
+  };
+  return precisionMap[metricName] || 0;
 };
 
 // 获取明文数据样本

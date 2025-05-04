@@ -51,6 +51,7 @@
             <div ref="communicationChart" class="chart-box"></div>
             <div ref="comparisonChart" class="chart-box"></div>
             <div ref="privacyChart" class="chart-box"></div>
+            <div ref="resourceUsageChart" class="chart-box"></div>
           </div>
         </a-tab-pane>
         
@@ -139,13 +140,15 @@ const queryTimeChart = ref<HTMLElement | null>(null);
 const communicationChart = ref<HTMLElement | null>(null);
 const comparisonChart = ref<HTMLElement | null>(null);
 const privacyChart = ref<HTMLElement | null>(null);
+const resourceUsageChart = ref<HTMLElement | null>(null);
 
 // 创建chart实例的映射
 const charts = ref<{[key: string]: echarts.ECharts | null}>({
   queryTime: null,
   communication: null,
   comparison: null,
-  privacy: null
+  privacy: null,
+  resourceUsage: null
 });
 
 // 监听visible属性变化
@@ -351,18 +354,23 @@ const renderCharts = () => {
     if (comparisonChart.value && !charts.value.comparison && metrics.value) {
       charts.value.comparison = echarts.init(comparisonChart.value);
       
-      const serverLoad = (metrics.value.metrics.server_load || 0) * 100;
-      const clientLoad = (metrics.value.metrics.client_load || 0) * 100;
+      // 获取服务器和客户端负载值（已经是百分比）
+      const serverLoad = metrics.value.metrics.server_load || 0;
+      const clientLoad = metrics.value.metrics.client_load || 0;
       
       const comparisonOption: ECOption = {
         title: {
-          text: '负载对比',
+          text: '计算资源强度对比',
           left: 'center'
         },
         tooltip: {
           trigger: 'axis',
           axisPointer: {
             type: 'shadow'
+          },
+          formatter: function(params: any) {
+            const serverParams = params[0];
+            return `${serverParams.name}: ${serverParams.value.toFixed(2)}%`;
           }
         },
         grid: {
@@ -373,9 +381,21 @@ const renderCharts = () => {
         },
         xAxis: {
           type: 'value',
-          max: Math.max(serverLoad, clientLoad) * 1.2,
           axisLabel: {
-            formatter: '{value}%'
+            formatter: function(value: number) {
+              return value.toString();
+            }
+          },
+          max: function(value: any) {
+            // 动态调整坐标轴最大值
+            return Math.max(100, value.max * 1.2);
+          },
+          axisPointer: {
+            label: {
+              formatter: function(params: any) {
+                return params.value.toFixed(2) + '%';
+              }
+            }
           }
         },
         yAxis: {
@@ -384,9 +404,26 @@ const renderCharts = () => {
         },
         series: [
           {
-            name: '负载百分比',
+            name: '负载比较',
             type: 'bar',
-            data: [clientLoad, serverLoad],
+            data: [
+              {
+                value: clientLoad,
+                name: '客户端',
+                itemStyle: { color: '#5470c6' },
+                label: {
+                  formatter: '{c}%'
+                }
+              },
+              {
+                value: serverLoad,
+                name: '服务端',
+                itemStyle: { color: '#91cc75' },
+                label: {
+                  formatter: '{c}%'
+                }
+              }
+            ],
             itemStyle: {
               color: function(params: any) {
                 const colorList = ['#5470c6', '#91cc75'];
@@ -396,7 +433,9 @@ const renderCharts = () => {
             label: {
               show: true,
               position: 'right',
-              formatter: '{c}%'
+              formatter: function(params: any) {
+                return params.value.toFixed(2) + '%';
+              }
             }
           }
         ]
@@ -474,6 +513,156 @@ const renderCharts = () => {
       
       charts.value.privacy.setOption(privacyOption);
     }
+    
+    // 渲染资源使用图表
+    if (resourceUsageChart.value && !charts.value.resourceUsage && metrics.value) {
+      charts.value.resourceUsage = echarts.init(resourceUsageChart.value);
+      
+      const cpuUsage = metrics.value.metrics.cpu_usage || 0;
+      const memUsage = metrics.value.metrics.mem_usage || 0;
+      const cpuMax = metrics.value.metrics.cpu_usage_max || 0;
+      const memMax = metrics.value.metrics.mem_usage_max || 0;
+      const samples = metrics.value.metrics.resource_samples || 0;
+      
+      const resourceOption: ECOption = {
+        title: {
+          text: '资源使用情况',
+          subtext: `采样数: ${samples}个`,
+          left: 'center'
+        },
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: {
+            type: 'shadow'
+          },
+          formatter: function(params: any) {
+            let result = '';
+            params.forEach((param: any) => {
+              if (param.seriesName.includes('CPU')) {
+                result += `${param.seriesName}: ${param.value.toFixed(2)}%<br/>`;
+              } else {
+                result += `${param.seriesName}: ${param.value.toFixed(2)}MB<br/>`;
+              }
+            });
+            return result;
+          }
+        },
+        legend: {
+          data: ['CPU平均使用率', 'CPU峰值使用率', '内存平均使用量', '内存峰值使用量'],
+          bottom: '5%'
+        },
+        grid: {
+          left: '3%',
+          right: '4%',
+          bottom: '15%',
+          top: '15%',
+          containLabel: true
+        },
+        xAxis: [
+          {
+            type: 'category',
+            data: ['CPU使用率', '内存使用量'],
+            axisLabel: {
+              rotate: 30
+            }
+          }
+        ],
+        yAxis: [
+          {
+            type: 'value',
+            name: 'CPU使用率(%)',
+            position: 'left',
+            axisLabel: {
+              formatter: '{value}%'
+            },
+            splitLine: {
+              show: false
+            },
+            min: 0,
+            max: Math.max(100, cpuMax * 1.2)
+          },
+          {
+            type: 'value',
+            name: '内存使用量(MB)',
+            position: 'right',
+            axisLabel: {
+              formatter: '{value}MB'
+            },
+            splitLine: {
+              show: false
+            },
+            min: 0,
+            max: Math.max(memMax * 1.2, 10)
+          }
+        ],
+        series: [
+          {
+            name: 'CPU平均使用率',
+            type: 'bar',
+            data: [{ value: cpuUsage, itemStyle: { color: '#5470c6' } }, { value: '', itemStyle: { color: '#5470c6' } }],
+            label: {
+              show: true,
+              position: 'top',
+              formatter: (params: any) => {
+                if (params.value !== '') {
+                  return params.value.toFixed(2) + '%';
+                }
+                return '';
+              }
+            }
+          },
+          {
+            name: 'CPU峰值使用率',
+            type: 'bar',
+            data: [{ value: cpuMax, itemStyle: { color: '#7b9ff6' } }, { value: '', itemStyle: { color: '#7b9ff6' } }],
+            label: {
+              show: true,
+              position: 'top',
+              formatter: (params: any) => {
+                if (params.value !== '') {
+                  return params.value.toFixed(2) + '%';
+                }
+                return '';
+              }
+            }
+          },
+          {
+            name: '内存平均使用量',
+            type: 'bar',
+            yAxisIndex: 1,
+            data: [{ value: '', itemStyle: { color: '#91cc75' } }, { value: memUsage, itemStyle: { color: '#91cc75' } }],
+            label: {
+              show: true,
+              position: 'top',
+              formatter: (params: any) => {
+                if (params.value !== '') {
+                  return params.value.toFixed(2) + 'MB';
+                }
+                return '';
+              }
+            }
+          },
+          {
+            name: '内存峰值使用量',
+            type: 'bar',
+            yAxisIndex: 1,
+            data: [{ value: '', itemStyle: { color: '#b5e2a0' } }, { value: memMax, itemStyle: { color: '#b5e2a0' } }],
+            label: {
+              show: true,
+              position: 'top',
+              formatter: (params: any) => {
+                if (params.value !== '') {
+                  return params.value.toFixed(2) + 'MB';
+                }
+                return '';
+              }
+            }
+          }
+        ]
+      };
+      
+      charts.value.resourceUsage.setOption(resourceOption);
+    }
   });
 };
 
@@ -500,12 +689,17 @@ const formatMetricName = (metricName: string) => {
     [PIRPerformanceMetric.QUERY_TIME]: '查询时间',
     [PIRPerformanceMetric.ACCURACY]: '准确率',
     [PIRPerformanceMetric.COMM_COST]: '通信成本',
-    [PIRPerformanceMetric.SERVER_LOAD]: '服务器负载',
+    [PIRPerformanceMetric.SERVER_LOAD]: '服务器计算强度',
     [PIRPerformanceMetric.CLIENT_LOAD]: '客户端负载',
     [PIRPerformanceMetric.PRIVACY_LEVEL]: '隐私保护级别',
     [PIRPerformanceMetric.TOTAL_QUERY_TIME]: '总查询时间',
     [PIRPerformanceMetric.START_TIME]: '开始时间',
-    [PIRPerformanceMetric.END_TIME]: '结束时间'
+    [PIRPerformanceMetric.END_TIME]: '结束时间',
+    [PIRPerformanceMetric.CPU_USAGE]: 'CPU平均使用率',
+    [PIRPerformanceMetric.MEM_USAGE]: '内存平均使用量',
+    [PIRPerformanceMetric.CPU_USAGE_MAX]: 'CPU峰值使用率',
+    [PIRPerformanceMetric.MEM_USAGE_MAX]: '内存峰值使用量',
+    [PIRPerformanceMetric.RESOURCE_SAMPLES]: '资源采样数'
   };
   return nameMap[metricName] || metricName
     .replace(/_/g, ' ')
@@ -522,13 +716,17 @@ const formatMetricValue = (metricName: string, value: any) => {
     }
     return seconds.toFixed(5);
   }
-  if (metricName === PIRPerformanceMetric.SERVER_LOAD || metricName === PIRPerformanceMetric.CLIENT_LOAD) {
-    // 对于非常小的值，调整显示格式
-    const load = parseFloat(String(value));
-    if (load < 0.0001) {
-      return (load * 1000000).toFixed(2) + 'μ'; // 微单位
-    }
-    return (load * 100).toFixed(2);
+  if (metricName === PIRPerformanceMetric.SERVER_LOAD) {
+    // 服务器负载 - 直接展示百分比值
+    const loadValue = parseFloat(String(value));
+    if (isNaN(loadValue)) return "0.0";
+    return loadValue.toFixed(2); // 保留两位小数
+  }
+  if (metricName === PIRPerformanceMetric.CLIENT_LOAD) {
+    // 客户端负载 - 直接展示百分比值
+    const loadValue = parseFloat(String(value));
+    if (isNaN(loadValue)) return "0.0";
+    return loadValue.toFixed(2); // 保留两位小数
   }
   if (metricName === PIRPerformanceMetric.TOTAL_QUERY_TIME) {
     const seconds = parseFloat(String(value));
@@ -540,6 +738,15 @@ const formatMetricValue = (metricName: string, value: any) => {
   if(metricName === PIRPerformanceMetric.START_TIME || metricName === PIRPerformanceMetric.END_TIME){
     return formatDateTime(value);
   }
+  if (metricName === PIRPerformanceMetric.CPU_USAGE || metricName === PIRPerformanceMetric.CPU_USAGE_MAX) {
+    return parseFloat(String(value)).toFixed(2);
+  }
+  if (metricName === PIRPerformanceMetric.MEM_USAGE || metricName === PIRPerformanceMetric.MEM_USAGE_MAX) {
+    return parseFloat(String(value)).toFixed(2);
+  }
+  if (metricName === PIRPerformanceMetric.RESOURCE_SAMPLES) {
+    return parseInt(String(value), 10);
+  }
   return value;
 };
 
@@ -548,8 +755,17 @@ const getPrecision = (metricName: string) => {
   if (metricName === PIRPerformanceMetric.QUERY_TIME || metricName === PIRPerformanceMetric.ACCURACY) {
     return 3;
   }
+  if (metricName === PIRPerformanceMetric.SERVER_LOAD || metricName === PIRPerformanceMetric.CLIENT_LOAD) {
+    return 2; // 负载保留2位小数
+  }
   if (metricName === PIRPerformanceMetric.TOTAL_QUERY_TIME) {
     return 5; // 总查询时间保留5位小数
+  }
+  if (metricName === PIRPerformanceMetric.CPU_USAGE || metricName === PIRPerformanceMetric.CPU_USAGE_MAX) {
+    return 2; // CPU使用率保留2位小数
+  }
+  if (metricName === PIRPerformanceMetric.MEM_USAGE || metricName === PIRPerformanceMetric.MEM_USAGE_MAX) {
+    return 2; // 内存使用量保留2位小数
   }
   return 0;
 };
@@ -563,16 +779,15 @@ const getMetricUnit = (metricName: string) => {
     },
     [PIRPerformanceMetric.ACCURACY]: '%',
     [PIRPerformanceMetric.COMM_COST]: 'KB',
-    [PIRPerformanceMetric.SERVER_LOAD]: (value) => {
-      const load = parseFloat(String(value));
-      return load < 0.0001 ? '' : '%';
-    },
-    [PIRPerformanceMetric.CLIENT_LOAD]: (value) => {
-      const load = parseFloat(String(value));
-      return load < 0.0001 ? '' : '%';
-    },
+    [PIRPerformanceMetric.SERVER_LOAD]: '%', // 直接展示为百分比
+    [PIRPerformanceMetric.CLIENT_LOAD]: '%', // 直接展示为百分比
     [PIRPerformanceMetric.PRIVACY_LEVEL]: '级',
-    [PIRPerformanceMetric.TOTAL_QUERY_TIME]: 'ms'
+    [PIRPerformanceMetric.TOTAL_QUERY_TIME]: 'ms',
+    [PIRPerformanceMetric.CPU_USAGE]: '%',
+    [PIRPerformanceMetric.MEM_USAGE]: 'MB',
+    [PIRPerformanceMetric.CPU_USAGE_MAX]: '%',
+    [PIRPerformanceMetric.MEM_USAGE_MAX]: 'MB',
+    [PIRPerformanceMetric.RESOURCE_SAMPLES]: '个'
   };
   
   const unit = unitMap[metricName];

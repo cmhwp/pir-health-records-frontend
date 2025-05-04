@@ -326,7 +326,12 @@ export enum PIRPerformanceMetric {
   PRIVACY_LEVEL = 'privacy_level',
   TOTAL_QUERY_TIME = 'total_query_time',
   START_TIME = 'start_time',
-  END_TIME = 'end_time'
+  END_TIME = 'end_time',
+  CPU_USAGE = 'cpu_usage',
+  MEM_USAGE = 'mem_usage',
+  CPU_USAGE_MAX = 'cpu_usage_max',
+  MEM_USAGE_MAX = 'mem_usage_max',
+  RESOURCE_SAMPLES = 'resource_samples'
 }
 
 // 生成模拟数据请求参数

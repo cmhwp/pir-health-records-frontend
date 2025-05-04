@@ -59,7 +59,7 @@ export const LOG_TYPE_COLORS: Record<string, string> = {
  * 所有日志类型的选项数组
  * 用于下拉选择框等UI组件
  */
-export const LOG_TYPE_OPTIONS = Object.entries(LOG_TYPES).map(([key, value]) => ({
+export const LOG_TYPE_OPTIONS = Object.entries(LOG_TYPES).map(([value]) => ({
   value,
   label: LOG_TYPE_TEXTS[value]
 }));
